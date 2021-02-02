@@ -1,0 +1,3 @@
+[submodule "PhylEx"]
+	path = PhylEx
+	url = https://github.com/junseonghwan/PhylEx.git

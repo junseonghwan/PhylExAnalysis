@@ -1,17 +1,15 @@
 # PhylExAnalysis
 
+## Install PhylEx
+Install dependencies for [PhylEx](https://github.com/junseonghwan/PhylEx).
 ```
-cd PhylEx
 git submodule init
 git submodule update
+cd PhylEx
 mkdir build
 cd build
 cmake ..
 make install
-cd ../../
-./PhylEx/run -c main.config
 ```
 
-This will generate the posterior samples in the directory `_output/HGSOC`.
-
-We will use the script in `Rscripts` to analyze and reproduce the results.
+The scripts for running PhylEx is provided in `scripts/RunInference.py`.

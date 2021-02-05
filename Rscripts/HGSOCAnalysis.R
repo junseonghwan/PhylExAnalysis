@@ -78,6 +78,11 @@ cell.df$Node <- as.character(cell.df$Node)
 cell.df$Clone <- cell.df$Node
 table(cell.df$Node)
 
+# Plot single cell data before and after co-clustering
+pl <- PlotVariantCounts(sc)
+pl_ <- CoclusteringPlot(sc, cell.df)
+ggsave(pl_, filename = paste(ANALYSIS_OUTPUT_PATH, "coclustering.pdf", sep="/"), height = 8, width = 3.5, units = "in")
+
 # Analyze the gene expression data
 feature_counts <- fc[,names(fc) %in% unique(sc$Cell)]
 # We will filter out some genes, e.g., remove MT genes, genes with unknown chromosome.
@@ -215,5 +220,4 @@ cbind(head(rownames(test_ret), 20), head(test_ret$FDR, 20))
 # ABCD vs EF
 test_ret <- camera(v, indices, contrast=contr.matrix[,3])
 cbind(head(rownames(test_ret), 20), head(test_ret$FDR, 20))
-
 

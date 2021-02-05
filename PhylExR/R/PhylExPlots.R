@@ -59,3 +59,38 @@ PlotSigGenes <- function(dge_results, mart, gene_plot_count = 50) {
   p <- p + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), legend.title = element_blank())
   return(p)
 }
+
+PlotTotalCounts <- function(sc,  base_size = 12) {
+  sc$b <- sc$d - sc$a
+  p <- ggplot(sc, aes(ID, Cell, fill = log(d + 1))) + geom_tile(colour = "white")
+  p <- p + theme_bw() + scale_fill_gradient(low = "white", high = "red")
+  p <- p + ylab("Cell") + xlab("Loci")
+  p <- p + scale_x_discrete(expand = c(0, 0)) + scale_y_discrete(expand = c(0, 0))
+  p <- p + theme(axis.ticks = element_blank())
+  p <- p + theme(axis.title.x =element_text(size = base_size * 2))
+  p <- p + theme(axis.title.y =element_text(size = base_size * 2))
+  p <- p + theme(axis.text.x = element_blank(), axis.text.y = element_blank())
+  p <- p + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  return(p)
+}
+CoclusteringPlot <- function(sc, cell.df, base_size = 12) {
+  sc_join <- left_join(sc, cell.df, by = "Cell")
+  cells_clustered <- cell.df[order(cell.df$Node), "Cell"]
+  sc_join$Cell <- factor(sc_join$Cell, levels = cells_clustered)
+  
+  mut_ids_clustered <- datum2node_[order(datum2node_$Node),"ID"]
+  sc_join$ID <- factor(sc_join$ID, levels = mut_ids_clustered)
+  names(sc_join)
+  
+  p <- ggplot(subset(sc_join, b >0), aes(ID, Cell, fill=Node)) + geom_tile(colour = "white")
+  p <- p + theme_bw()
+  p <- p + xlab("Loci") + ylab("Cell")
+  p <- p + scale_x_discrete(expand = c(0, 0)) + scale_y_discrete(expand = c(0, 0))
+  p <- p + theme(axis.ticks = element_blank())
+  p <- p + theme(axis.title.x =element_text(size = base_size * 2))
+  p <- p + theme(axis.title.y =element_text(size = base_size * 2))
+  p <- p + theme(axis.text.x = element_blank(), axis.text.y = element_blank())
+  p <- p + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  p <- p + theme(legend.text = element_text(size=7, face="bold")) + guides(fill=guide_legend(title="Clone", size = 7))
+  return(p)
+}

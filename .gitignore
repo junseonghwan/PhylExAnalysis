@@ -41,4 +41,5 @@ vignettes/*.pdf
 _*
 
 *.o
+*.so
 

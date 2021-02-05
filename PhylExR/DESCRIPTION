@@ -7,7 +7,7 @@ Author: Seong-Hwan Jun
 Maintainer: Seong-Hwan Jun <s2jun.uw@gmail.com>
 Description: This package provides functions for generating input files for PhylEx and processing the output files.
 License: GPL (>= 2)
-Imports: Rcpp (>= 1.0.5), dplyr (>= 1.0.2), matrixStats (>= 0.57.0), reshape2 (>= 1.4.4)
+Imports: Rcpp (>= 1.0.5), dplyr (>= 1.0.2), matrixStats (>= 0.57.0), reshape2 (>= 1.4.4), TailRank (>= 3.2.1)
 LinkingTo: Rcpp, RcppGSL
 SystemRequirements: C++17
 RoxygenNote: 7.0.2

@@ -1,5 +1,5 @@
-// [[Rcpp::plugins("cpp17")]]
 // [[Rcpp::depends(RcppGSL)]]
+// [[Rcpp::plugins("cpp17")]]
 
 #include <RcppGSL.h>
 #include <Rcpp.h>
@@ -10,8 +10,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "node.hpp"
 #include <gsl/gsl_sf.h>
+
+#include "node.hpp"
 
 using namespace Rcpp;
 using namespace std;

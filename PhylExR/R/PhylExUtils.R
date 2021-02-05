@@ -21,6 +21,29 @@ FindBestRep <- function(chain_paths, chains) {
   return(best_chain)
 }
 
+EstimateHyperParameters <- function(dat, sc, alpha0 = 0.05, beta0 = 0.05, alpha = 1, beta = 1, delta0 = 0.5) {
+  snv_count <- dim(dat)[1]
+  hyper_params.df <- data.frame(ID = dat$ID, alpha = rep(1, snv_count), beta = rep(1, snv_count), delta0 = rep(0.5, snv_count))
+  sc$b <- sc$d - sc$a
+  temp <- subset(sc, d > 0)
+  for (i in 1:snv_count) {
+    id <- as.character(dat$ID[i])
+    temp2 <- subset(temp, ID == id)
+    if (dim(temp2)[1] > 0) {
+      ww <- matrix(0, ncol = 2, nrow = dim(temp2)[1])
+      ww[,1] <- dbb(temp2$b, temp2$d, alpha0, beta0, log=TRUE)
+      ww[,2] <- dbb(temp2$b, temp2$d, alpha, beta, log=TRUE)
+      log_norm <- apply(ww, 1, logSumExp)
+      probs <- exp(ww - log_norm)
+      idx <- (probs[,2] > (delta0 + 1e-16))
+      if (sum(idx) > 0) {
+        hyper_params.df[i,2:4] <- c(mean(temp2$b[idx]) + 1, mean(temp2$a[idx]) + 1, delta0)
+      }
+    }
+  }
+  return(hyper_params.df)
+}
+
 SelectTopKGenes <- function(sce, topK) {
   vars <- assay(sce) %>% log1p %>% rowVars
   names(vars) <- rownames(sce)

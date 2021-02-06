@@ -28,23 +28,7 @@ LogSumExp <- function(x) {
     .Call(`_PhylExR_LogSumExp`, x)
 }
 
-ScLikelihoodWithDropout <- function(has_snv, var_reads, total_reads, dropout_alpha, dropout_beta, bursty_alpha, bursty_beta, biallelic_alpha, biallelic_beta, seq_err = 0.001, dropout_mixing_proportion = 0.05, bursty_mixing_proportion = 0.45, biallelic_mixing_proportion = 0.5) {
-    .Call(`_PhylExR_ScLikelihoodWithDropout`, has_snv, var_reads, total_reads, dropout_alpha, dropout_beta, bursty_alpha, bursty_beta, biallelic_alpha, biallelic_beta, seq_err, dropout_mixing_proportion, bursty_mixing_proportion, biallelic_mixing_proportion)
-}
-
-ScLikelihood <- function(has_snv, var_reads, total_reads, biallelic_alpha, biallelic_beta, bursty_alpha, bursty_beta, seq_err = 0.001, bursty_mixture_prob = 0.5) {
-    .Call(`_PhylExR_ScLikelihood`, has_snv, var_reads, total_reads, biallelic_alpha, biallelic_beta, bursty_alpha, bursty_beta, seq_err, bursty_mixture_prob)
-}
-
-IdentifyCellMutationStatus <- function(datum2node, ordered_nodes, ordered_mutations, var_counts, total_counts, dropout_hp, bursty_hp, biallelic_hp) {
-    .Call(`_PhylExR_IdentifyCellMutationStatus`, datum2node, ordered_nodes, ordered_mutations, var_counts, total_counts, dropout_hp, bursty_hp, biallelic_hp)
-}
-
 IdentifyNodeMutationStatus <- function(datum2node, ordered_nodes, ordered_mutations) {
     .Call(`_PhylExR_IdentifyNodeMutationStatus`, datum2node, ordered_nodes, ordered_mutations)
-}
-
-IdentifyCellMutationStatusBursty <- function(datum2node, ordered_nodes, ordered_mutations, var_counts, total_counts, bursty_hp, biallelic_hp) {
-    .Call(`_PhylExR_IdentifyCellMutationStatusBursty`, datum2node, ordered_nodes, ordered_mutations, var_counts, total_counts, bursty_hp, biallelic_hp)
 }
 

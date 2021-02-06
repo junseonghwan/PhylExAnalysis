@@ -38,7 +38,7 @@ chains <- 0:3
 # Load the data for evaluation.
 dat <- read.table(BULK_PATH, header=T, sep="\t")
 sc <- read.table(SC_PATH, header=T, as.is = TRUE)
-sc_hp <- read.table(SC_HP_PATH, header=T, sep="\t")
+sc_hp <- read.table(SC_HP_PATH, header=T)
 fc <- read.table(FEATURE_COUNTS_PATH, header=T, row.names = 1, check.names = F)
 valid_clones <- c("A_B_C_D_E_F_G_H_I", "A_B_C_D", "A_B", "C_D", "A", "B", "C", "D", "E_F_G_H_I", "E_F", "E", "F")
 gt <- read.table(GT_PATH, header=T, as.is = T)
@@ -79,7 +79,7 @@ cell.df$Clone <- cell.df$Node
 table(cell.df$Node)
 
 # Plot single cell data before and after co-clustering
-pl <- PlotVariantCounts(sc)
+pl <- PlotTotalCounts(sc)
 pl_ <- CoclusteringPlot(sc, cell.df)
 ggsave(pl_, filename = paste(ANALYSIS_OUTPUT_PATH, "coclustering.pdf", sep="/"), height = 8, width = 3.5, units = "in")
 

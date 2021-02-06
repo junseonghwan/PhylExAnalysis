@@ -40,7 +40,8 @@ ComputeCellAssignmentProbability <- function(cell_data,
                                               datum2node,
                                               bursty_hp,
                                               biallelic_hp,
-                                              include_normal_clone = TRUE) {
+                                              include_normal_clone = TRUE,
+                                             epsilon=0.01) {
   names(datum2node) <- c("ID", "Node")
   snv_count <- length(datum2node$ID)
   

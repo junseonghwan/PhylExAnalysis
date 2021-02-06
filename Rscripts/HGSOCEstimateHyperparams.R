@@ -1,5 +1,5 @@
 rm(list=ls())
-install.packages(".", repos=NULL, type="source")
+#install.packages("PhylExR", repos=NULL, type="source")
 library(PhylExR)
 
 DATA_PATH <- "~/PhylExAnalysis/data/"

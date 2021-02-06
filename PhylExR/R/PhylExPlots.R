@@ -74,6 +74,7 @@ PlotTotalCounts <- function(sc,  base_size = 12) {
   return(p)
 }
 CoclusteringPlot <- function(sc, cell.df, base_size = 12) {
+  sc$b <- sc$d - sc$a
   sc_join <- left_join(sc, cell.df, by = "Cell")
   cells_clustered <- cell.df[order(cell.df$Node), "Cell"]
   sc_join$Cell <- factor(sc_join$Cell, levels = cells_clustered)

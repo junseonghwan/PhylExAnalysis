@@ -40,6 +40,10 @@ IdentifyCellMutationStatus <- function(datum2node, ordered_nodes, ordered_mutati
     .Call(`_PhylExR_IdentifyCellMutationStatus`, datum2node, ordered_nodes, ordered_mutations, var_counts, total_counts, dropout_hp, bursty_hp, biallelic_hp)
 }
 
+IdentifyNodeMutationStatus <- function(datum2node, ordered_nodes, ordered_mutations) {
+    .Call(`_PhylExR_IdentifyNodeMutationStatus`, datum2node, ordered_nodes, ordered_mutations)
+}
+
 IdentifyCellMutationStatusBursty <- function(datum2node, ordered_nodes, ordered_mutations, var_counts, total_counts, bursty_hp, biallelic_hp) {
     .Call(`_PhylExR_IdentifyCellMutationStatusBursty`, datum2node, ordered_nodes, ordered_mutations, var_counts, total_counts, bursty_hp, biallelic_hp)
 }

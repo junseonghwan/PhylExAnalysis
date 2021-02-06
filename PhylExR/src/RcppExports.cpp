@@ -135,6 +135,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// IdentifyNodeMutationStatus
+NumericMatrix IdentifyNodeMutationStatus(DataFrame datum2node, const std::vector<std::string>& ordered_nodes, const std::vector<std::string>& ordered_mutations);
+RcppExport SEXP _PhylExR_IdentifyNodeMutationStatus(SEXP datum2nodeSEXP, SEXP ordered_nodesSEXP, SEXP ordered_mutationsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< DataFrame >::type datum2node(datum2nodeSEXP);
+    Rcpp::traits::input_parameter< const std::vector<std::string>& >::type ordered_nodes(ordered_nodesSEXP);
+    Rcpp::traits::input_parameter< const std::vector<std::string>& >::type ordered_mutations(ordered_mutationsSEXP);
+    rcpp_result_gen = Rcpp::wrap(IdentifyNodeMutationStatus(datum2node, ordered_nodes, ordered_mutations));
+    return rcpp_result_gen;
+END_RCPP
+}
 // IdentifyCellMutationStatusBursty
 NumericMatrix IdentifyCellMutationStatusBursty(DataFrame datum2node, std::vector<std::string> ordered_nodes, std::vector<std::string> ordered_mutations, NumericMatrix var_counts, NumericMatrix total_counts, NumericMatrix bursty_hp, NumericMatrix biallelic_hp);
 RcppExport SEXP _PhylExR_IdentifyCellMutationStatusBursty(SEXP datum2nodeSEXP, SEXP ordered_nodesSEXP, SEXP ordered_mutationsSEXP, SEXP var_countsSEXP, SEXP total_countsSEXP, SEXP bursty_hpSEXP, SEXP biallelic_hpSEXP) {
@@ -163,6 +176,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_PhylExR_ScLikelihoodWithDropout", (DL_FUNC) &_PhylExR_ScLikelihoodWithDropout, 13},
     {"_PhylExR_ScLikelihood", (DL_FUNC) &_PhylExR_ScLikelihood, 9},
     {"_PhylExR_IdentifyCellMutationStatus", (DL_FUNC) &_PhylExR_IdentifyCellMutationStatus, 8},
+    {"_PhylExR_IdentifyNodeMutationStatus", (DL_FUNC) &_PhylExR_IdentifyNodeMutationStatus, 3},
     {"_PhylExR_IdentifyCellMutationStatusBursty", (DL_FUNC) &_PhylExR_IdentifyCellMutationStatusBursty, 7},
     {NULL, NULL, 0}
 };

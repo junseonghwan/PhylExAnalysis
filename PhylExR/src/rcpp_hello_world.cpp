@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <gsl/gsl_sf.h>
+#include <gsl/gsl_sf_gamma.h>
 
 #include "node.hpp"
 
@@ -42,10 +42,11 @@ double log_beta_binomial_pdf(size_t x, size_t n, double alpha, double beta) {
     return 0;
   }
   
-  double ret = gsl_sf_lnchoose(n, x);
-  ret += gsl_sf_lnbeta(x+alpha, n-x+beta);
-  ret -= gsl_sf_lnbeta(alpha, beta);
-  return ret;
+  // double ret = gsl_sf_lnchoose(n, x);
+  // ret += gsl_sf_lnbeta(x+alpha, n-x+beta);
+  // ret -= gsl_sf_lnbeta(alpha, beta);
+  // return ret;
+  return 0;
 }
 
 //' @export
@@ -387,6 +388,39 @@ NumericMatrix IdentifyCellMutationStatus(DataFrame datum2node,
 }
 
 // [[Rcpp::export]]
+NumericMatrix IdentifyNodeMutationStatus(DataFrame datum2node,
+                                         const std::vector<std::string> &ordered_nodes,
+                                         const std::vector<std::string> &ordered_mutations)
+{
+  size_t node_count = ordered_nodes.size();
+  size_t snv_count = ordered_mutations.size();
+  NumericMatrix node2snv(node_count, snv_count);
+  
+  std::unordered_set<std::string> empty_set;
+  std::unordered_map<std::string, std::unordered_set<std::string>> node2data = ProcessDatum2Node(datum2node);
+  node2data["0"] = empty_set;
+  for (std::string node : ordered_nodes) {
+    std::string parent_node = get_parent_name(node);
+    if (parent_node == "0") {
+      continue;
+    }
+    node2data[node].insert(node2data[parent_node].begin(), node2data[parent_node].end());
+  }
+  
+  for (size_t i = 0; i < ordered_nodes.size(); i++) {
+    for (size_t j = 0; j < ordered_mutations.size(); j++) {
+      if (node2data[ordered_nodes.at(i)].count(ordered_mutations.at(j))) {
+        node2snv(i,j) = 1;
+      } else {
+        node2snv(i,j) = 0;
+      }
+    }
+  }
+  return node2snv;
+}
+                                               
+
+// [[Rcpp::export]]
 NumericMatrix IdentifyCellMutationStatusBursty(DataFrame datum2node,
                                                std::vector<std::string> ordered_nodes,
                                                std::vector<std::string> ordered_mutations,
@@ -401,7 +435,6 @@ NumericMatrix IdentifyCellMutationStatusBursty(DataFrame datum2node,
     for (std::string node : ordered_nodes) {
         std::string parent_node = get_parent_name(node);
         if (parent_node == "0") {
-            //Rcout << node << " is skipped since its parent node is the root node. We don't assign any mutation to the root.\n";
             continue;
         }
         node2data[node].insert(node2data[parent_node].begin(), node2data[parent_node].end());

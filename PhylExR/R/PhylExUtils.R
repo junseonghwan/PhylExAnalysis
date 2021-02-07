@@ -1,3 +1,4 @@
+#' @export
 ConvertToEnsemblID <- function(gene_names, mart) {
   results <- getBM(attributes = c("ensembl_gene_id", "external_gene_name", "chromosome_name"),
                    filters = "external_gene_name", values = gene_names,
@@ -5,6 +6,7 @@ ConvertToEnsemblID <- function(gene_names, mart) {
   return(results)
 }
 
+#' @export
 ConvertToGeneName <- function(ensembl_gene_ids, mart) {
   results <- getBM(attributes = c("ensembl_gene_id", "external_gene_name", "chromosome_name", "start_position", "end_position"),
                    filters = "ensembl_gene_id", values = ensembl_gene_ids,
@@ -12,6 +14,7 @@ ConvertToGeneName <- function(ensembl_gene_ids, mart) {
   return(results)
 }
 
+#' @export
 FindBestRep <- function(chain_paths, chains) {
   log_liks <- rep(0, length(chains))
   for (chain in chains) {
@@ -21,19 +24,20 @@ FindBestRep <- function(chain_paths, chains) {
   return(best_chain)
 }
 
-EstimateHyperParameters <- function(dat, sc, alpha0 = 0.05, beta0 = 0.05, alpha = 1, beta = 1, delta0 = 0.5) {
-  snv_count <- dim(dat)[1]
-  hyper_params.df <- data.frame(ID = dat$ID, alpha = rep(1, snv_count), beta = rep(1, snv_count), delta0 = rep(0.5, snv_count))
+#' @export
+EstimateHyperParameters <- function(mut_ids, sc, alpha0 = 0.05, beta0 = 0.05, alpha = 1, beta = 1, delta0 = 0.5) {
+  snv_count <- length(mut_ids)
+  hyper_params.df <- data.frame(ID = mut_ids, alpha = rep(1, snv_count), beta = rep(1, snv_count), delta0 = rep(0.5, snv_count))
   sc$b <- sc$d - sc$a
   temp <- subset(sc, d > 0)
   for (i in 1:snv_count) {
-    id <- as.character(dat$ID[i])
+    id <- as.character(mut_ids[i])
     temp2 <- subset(temp, ID == id)
     if (dim(temp2)[1] > 0) {
       ww <- matrix(0, ncol = 2, nrow = dim(temp2)[1])
-      ww[,1] <- dbb(temp2$b, temp2$d, alpha0, beta0, log=TRUE)
-      ww[,2] <- dbb(temp2$b, temp2$d, alpha, beta, log=TRUE)
-      log_norm <- apply(ww, 1, logSumExp)
+      ww[,1] <- TailRank::dbb(temp2$b, temp2$d, alpha0, beta0, log=TRUE)
+      ww[,2] <- TailRank::dbb(temp2$b, temp2$d, alpha, beta, log=TRUE)
+      log_norm <- apply(ww, 1, matrixStats::logSumExp)
       probs <- exp(ww - log_norm)
       idx <- (probs[,2] > (delta0 + 1e-16))
       if (sum(idx) > 0) {
@@ -44,6 +48,7 @@ EstimateHyperParameters <- function(dat, sc, alpha0 = 0.05, beta0 = 0.05, alpha 
   return(hyper_params.df)
 }
 
+#' @export
 SelectTopKGenes <- function(sce, topK) {
   vars <- assay(sce) %>% log1p %>% rowVars
   names(vars) <- rownames(sce)
@@ -53,6 +58,7 @@ SelectTopKGenes <- function(sce, topK) {
   return(sce)
 }
 
+#' @export
 CollapseClones <- function(datum2node, MIN_SNV_COUNT = 1) {
   # Merge any singleton cluster into its ancestor
   nodes <- as.character(unique(datum2node$Node))
@@ -69,6 +75,7 @@ CollapseClones <- function(datum2node, MIN_SNV_COUNT = 1) {
   return(datum2node)
 }
 
+#' @export
 CollapseClonesByCellCount <- function(datum2node, cell.df, MIN_CELL_COUNT = 10) {
   # Merge clones with less than MIN_CELL_COUNT cells into its parent.
   nodes <- as.character(unique(datum2node$Node))
@@ -90,6 +97,7 @@ CollapseClonesByCellCount <- function(datum2node, cell.df, MIN_CELL_COUNT = 10) 
 }
 
 # Hardcode pathway names.
+#' @export
 FormatHallmarkName <- function(pathway_name) {
   if (pathway_name == "HALLMARK_TNFA_SIGNALING_VIA_NFKB") {
     return("TNFA signaling via NFKB")

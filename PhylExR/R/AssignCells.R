@@ -21,13 +21,13 @@ ScLikelihood <- function(has_snv,
     return(0)
   }
   if (has_snv) {
-    log_lik_biallelic <- dbb(var_read_count, total_read_count, biallelic_alpha, biallelic_beta, log = TRUE)
+    log_lik_biallelic <- TailRank::dbb(var_read_count, total_read_count, biallelic_alpha, biallelic_beta, log = TRUE)
     log_lik_biallelic <- log_lik_biallelic + log(1-beta_binom_mixture_prob)
-    log_lik_bursty <- dbb(var_read_count,  total_read_count, bursty_alpha, bursty_beta, log = TRUE)
+    log_lik_bursty <- TailRank::dbb(var_read_count,  total_read_count, bursty_alpha, bursty_beta, log = TRUE)
     log_lik_bursty <- log_lik_bursty + log(beta_binom_mixture_prob)
-    log_lik <- logsumexp(log_lik_biallelic, log_lik_bursty)
+    log_lik <- LogAdd(log_lik_biallelic, log_lik_bursty)
   } else {
-    log_lik <- dbb(var_read_count, total_read_count, seq_err, 1 - seq_err, log = TRUE)
+    log_lik <- TailRank::dbb(var_read_count, total_read_count, seq_err, 1 - seq_err, log = TRUE)
   }
   
   return(log_lik);

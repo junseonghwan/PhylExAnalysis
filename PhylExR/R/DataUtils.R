@@ -18,9 +18,9 @@ ProcessFixedComponentVCF <- function(fix, strip_chr_prefix=FALSE) {
 #' @export
 ConstructGranges <- function(chr, start, offset=0, width=1)
 {
-  pos <- IRanges(start=start-offset, end=start+width)
-  rle <- Rle(paste(chr, "", sep=""))
-  granges_obj <- GRanges(seqnames = rle, ranges = pos)
+  pos <- IRanges::IRanges(start=start-offset, end=start+width)
+  rle_ <- S4Vectors::Rle(paste(chr, "", sep=""))
+  granges_obj <- GenomicRanges::GRanges(seqnames = rle_, ranges = pos)
   return(granges_obj)
 }
 

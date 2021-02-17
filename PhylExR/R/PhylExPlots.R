@@ -1,5 +1,6 @@
 
 # df: Data frame with columns W1, W2, Node, and Clone.
+#' @import ggplot2
 ReducedDimensionPlots <- function(df, base_size = 12) {
   p <- ggplot(df, aes(W1, W2, colour=Node)) + geom_point(alpha=0.8) + theme_classic()
   p <- p + theme(axis.title.x=element_text(size = base_size * 2), axis.title.y=element_text(size = base_size*2))
@@ -11,6 +12,7 @@ ReducedDimensionPlots <- function(df, base_size = 12) {
 }
 
 # Assume volcano.df is already ordered based on significance
+#' @import ggplot2
 MakeVolcanoPlot <- function(volcano.df, plot_title, num_genes_to_label = 10, base_size = 12) {
   p <- ggplot(volcano.df, aes(logfc, logpvalue, col = significant)) + geom_point() + theme_bw() + ylab("-Log p-value") + xlab("Log fold change")
   p <- p + labs(title=plot_title)
@@ -36,6 +38,7 @@ MakeVolcanoPlot <- function(volcano.df, plot_title, num_genes_to_label = 10, bas
   return(p)
 }
 
+#' @import ggplot2
 PlotSigGenes <- function(dge_results, mart, gene_plot_count = 50) {
   # Plot the significantly differentially expressed genes along with their p-values.
   ordering <- order(dge_results$table$PValue)
@@ -73,6 +76,7 @@ PlotTotalCounts <- function(sc,  base_size = 12) {
   p <- p + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
   return(p)
 }
+
 CoclusteringPlot <- function(sc, cell.df, base_size = 12) {
   sc$b <- sc$d - sc$a
   sc_join <- left_join(sc, cell.df, by = "Cell")

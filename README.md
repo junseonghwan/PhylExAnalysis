@@ -38,8 +38,8 @@ If different processes were followed to generate the bulk and single cell data f
 
 ## Run PhylEx
 The scripts for running PhylEx is provided in `scripts/RunInference.py`.
-We recommend to use 4 chains and the number of MCMC iterations should correspond to the number of SNVs. 
-We used should use 20,000 iterations for HER2+ data, which had 432 SNVs and 369 cells.
+We recommend to use 4 chains and the number of MCMC iterations should depend on the number of SNVs. 
+We used 20,000 iterations for HER2+ data, which had 432 SNVs and 369 cells.
 We used 10,000 iterations for HGSOC data, which had 67 SNVs and 360 cells.
 
 ## Contact

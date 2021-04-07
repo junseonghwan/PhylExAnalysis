@@ -2,14 +2,26 @@ args = commandArgs(trailingOnly=TRUE)
 print(args)
 
 VCF_PATH <- as.character(args[1])
+# Path to bulk multi-regional data.
+# We will assume thet the number of directories in CNV_PATH corresponds tothe number of regions + germline.
+# The  directory names should match the names given in the VCF_PATH for each region.
 CNV_PATH <- as.character(args[2])
 OUTPUT_PATH <- as.character(args[3])
-GERMLINE_COLUMN_IDX <- 1
-MIN_VAF <- 0.03
 
-#VCF_PATH <- "~/data/TNBC/BCSA2/BCSA2_filtered_liftoverhg19.vcf"
+#VCF_PATH <- "~/data/TNBC/BCSA1/BCSA1_filtered_hg38.vcf"
+#CNV_PATH <- "~/data/TNBC/BCSA1/"
 #OUTPUT_PATH <- "~/PhylExAnalysis/_temp/"
 
+# path to TitanCNA output file within each bulk region.
+CNV_SUFFIX_PATH <- "cna/results/titan/hmm/"
+OPTIMAL_CNV_SOLN_FILE <- paste(CNV_SUFFIX_PATH, "optimalClusterSolution.txt", sep="/")
+
+GERMLINE_COLUMN_IDX <- 1
+MIN_VAF <- 0.03
+APPLY_PASS_FILTER <- FALSE # Set to TRUE if there is a filter to be used.
+FILTER_HLA_GENES <- TRUE
+
+library(biomaRt)
 library(PhylExR)
 library(vcfR)
 
@@ -21,13 +33,16 @@ fix <- ProcessFixedComponentVCF(fix, strip_chr_prefix = T)
 allelic_depth <- extract.gt(vcf, element = "AD")
 allelic_depth <- data.frame(allelic_depth)
 
-# Pass filters
-filter_idx1 <- (fix$FILTER == "PASS")
-
 # Select SNVs
 filter_idx2 <- (nchar(fix$ALT) == 1) & (nchar(fix$REF) == 1)
 
-filter_idx <- filter_idx1 & filter_idx2
+# Pass filters
+if (APPLY_PASS_FILTER) {
+  filter_idx1 <- (fix$FILTER == "PASS")
+  filter_idx <- filter_idx1 & filter_idx2
+} else {
+  filter_idx <- filter_idx2
+}
 
 fix <- fix[filter_idx,]
 allelic_depth <- allelic_depth[filter_idx,]
@@ -75,9 +90,38 @@ b <- apply(alt_counts[,-GERMLINE_COLUMN_IDX], 1, function(row) {
 snv_count <- dim(fix)[1]
 mut_ids <- paste("s", 0:(snv_count-1), sep="")
 
-bulk <- data.frame(ID = mut_ids, 
+# Add copy number information.
+snv.gr <- ConstructGranges(chr = fix[,c("CHROM")], start = fix[,c("POS")], width = 0)
+major_cn <- matrix(1, nrow = snv_count, ncol = region_count)
+minor_cn <- matrix(1, nrow = snv_count, ncol = region_count)
+colnames(major_cn) <- region_names[-GERMLINE_COLUMN_IDX]
+colnames(minor_cn) <- region_names[-GERMLINE_COLUMN_IDX]
+for (i in 1:region_count) {
+  region <- region_names[-GERMLINE_COLUMN_IDX][i]
+  REGION_PATH <- paste(CNV_PATH, region, sep="/")
+  opt_soln <- read.table(paste(REGION_PATH, OPTIMAL_CNV_SOLN_FILE, sep="/"), header=F, skip = 1)
+  CNA_PATH <- paste(REGION_PATH, "/", CNV_SUFFIX_PATH, "/optimalClusterSolution/", opt_soln$V2, ".segs.txt", sep="")
+
+  cna <- read.table(CNA_PATH, header=T)
+  # Strip `chr`
+  cna_chrs <- gsub("chr", "", cna$Chromosome)
+  cna.gr <- ConstructGranges(cna_chrs, cna$Start_Position.bp., width = cna$End_Position.bp. - cna$Start_Position.bp.)
+  ret <- findOverlaps(snv.gr, cna.gr)
+  major_cn[ret@from,i] <- cna[ret@to,"MajorCN"]
+  minor_cn[ret@from,i] <- cna[ret@to,"MinorCN"]
+}
+major_cn <- apply(major_cn, 1, function(row) {
+  paste(row, collapse = ",")
+})
+minor_cn <- apply(minor_cn, 1, function(row) {
+  paste(row, collapse = ",")
+})
+
+
+bulk <- data.frame(ID = mut_ids,
                    b = b, d = d,
-                   major_cn=paste(rep(1, region_count), collapse = ","), minor_cn=paste(rep(1, region_count), collapse=","))
+#                   major_cn=paste(rep(1, region_count), collapse = ","), minor_cn=paste(rep(1, region_count), collapse=","))
+                  major_cn=major_cn, minor_cn=minor_cn)
 if (!dir.exists(OUTPUT_PATH)) {
   dir.create(OUTPUT_PATH, recursive = T)
 }

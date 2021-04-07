@@ -83,20 +83,20 @@ ComputeCellAssignmentProbability <- function(cell_data,
   rownames(node2snvs.df) <- nodes_breadth_first
   colnames(node2snvs.df) <- mut_ids
 
-  cells <- unique(sc$Cell)
+  cells <- unique(cell_data$Cell)
   cell_count <- length(cells)
   node_count <- length(nodes_breadth_first)
-  sc$b <- sc$d - sc$a
+  cell_data$b <- cell_data$d - cell_data$a
   log_prob_matrix <- matrix(0, nrow = cell_count, ncol = node_count)
   for (i in 1:length(cells)) {
     cell <- cells[i]
     for (node in 1:length(nodes_breadth_first)) {
-      sc_cell <- subset(sc, Cell == cell)
+      sc_cell <- subset(cell_data, Cell == cell)
       node_mut_status <- mut_ids[which(node2snvs.df[node,] == 1)]
       has_snv <- sc_cell$ID %in% node_mut_status
-      mut_ids_to_compute <- sc_hp$ID %in% sc_cell$ID
-      biallelic_alpha <- sc_hp[mut_ids_to_compute,"alpha"]
-      biallelic_beta <- sc_hp[mut_ids_to_compute,"beta"]
+      mut_ids_to_compute <- biallelic_hp$ID %in% sc_cell$ID
+      biallelic_alpha <- biallelic_hp[mut_ids_to_compute,"alpha"]
+      biallelic_beta <- biallelic_hp[mut_ids_to_compute,"beta"]
       df <- data.frame(has_snv=has_snv, b=sc_cell$b, d=sc_cell$d, alpha=biallelic_alpha, beta=biallelic_beta)
       log_liks <- apply(df, 1, function(row) {
         row <- as.data.frame(t(row))

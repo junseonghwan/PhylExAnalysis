@@ -1,3 +1,23 @@
+#' @export
+GetAllTranscripts <- function(ensembl_mart, chrs = c(1:22, "X", "Y")) {
+  all.transcripts <- unique( getBM(attributes = c("external_gene_name", "chromosome_name", 
+                                            "start_position", "end_position",
+                                            "transcript_start", "transcript_end", "ensembl_transcript_id"),
+                             filters="chromosome_name",
+                             values=chrs, 
+                             mart = ensembl_mart))
+  return(all.transcripts)
+}
+
+#' @export
+GetAllGenes <- function(ensembl_mart, chrs = c(1:22, "X", "Y")) {
+  all.genes <- unique( getBM(attributes = c("external_gene_name", "chromosome_name", 
+                                            "start_position", "end_position"),
+                             filters="chromosome_name",
+                             values=chrs, 
+                             mart = ensembl_mart))
+  return(all.genes)
+}
 
 #' @export
 ProcessFixedComponentVCF <- function(fix, strip_chr_prefix=FALSE) {
@@ -43,7 +63,7 @@ CombineSingleCellReads <- function(sc_reads_path, sc_reads_pattern = "*.txt", fi
       # Below if stmt will remove any cells that do not have any reads.
       if (sum(df$REF_COUNT) + sum(df$ALT_COUNT) > 0) {
         cell_name <- paste("c", cell_id, sep="")
-        ret <- rbind(ret, data.frame(ID=ids, Cell=cell_name, a = df$REF_COUNT, d = df$ALT_COUNT + df$REF_COUNT))
+        ret <- rbind(ret, data.frame(ID=ids, Cell=cell_name, a = df$REF_COUNT, d = df$ALT_COUNT + df$REF_COUNT, SampleName = file))
         cell_id <- cell_id + 1
       }
     }

@@ -24,7 +24,7 @@ parser.add_argument('--max_cn', help="Maximum copy number.", type=int, default =
 parser.add_argument('--variant_cp_prob', help="Probability of a copy being variant for CN simulation.", type=float, default = 0.5)
 parser.add_argument('--var_clonal_cn_prob', help="Probability distn for variant copy number when using clonal copy number simulator. This value will be ignored if birth_rate > 0 is specified.", type=str, default ="0,1,0,0")
 parser.add_argument('--ref_clonal_cn_prob', help="Probability distn for reference copy number when using clonal copy number simulator. This value will be ignored if birth_rate > 0 is specified.", type=str, default ="0,1,0,0")
-parser.add_argument('--bursty_prob', help="Mean depth for bulk.", type=float, default = 0.8)
+parser.add_argument('--bursty_prob', help="The rate at which a site in a single cell data is bursty.", type=float, default = 0.8)
 parser.add_argument('--dropout_rate', help="Dropout rate.", type=float, default = 0.8)
 parser.add_argument('--randomize_cf', help="Randomize cell franction.", type=int, default = 0)
 parser.add_argument('--randomize_branching', help="Randomize number of branches per node.", type=int, default = 0)

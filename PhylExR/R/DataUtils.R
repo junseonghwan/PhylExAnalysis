@@ -71,3 +71,38 @@ CombineSingleCellReads <- function(sc_reads_path, sc_reads_pattern = "*.txt", fi
   } 
   stop("Error: No reads found.")
 }
+
+# The same function as CombineSingleCellReads but to handle the case where ID is not available.
+#' @export
+CombineSingleCellReads2 <- function(sc_reads_path, sc_reads_pattern = "*.txt", file_separator = "\t")
+{
+  files <- list.files(sc_reads_path, pattern = sc_reads_pattern)
+  n_cells <- length(files)
+  if (n_cells > 0) {
+    df <- read.table(paste(sc_reads_path, files[1], sep = "/"),
+                     header = T, sep = file_separator)
+    n_snvs <- dim(df)[1]
+    ids <- paste("s", 0:(n_snvs-1), sep="")
+    ret <- data.frame()
+    cell_id <- 1
+    for (file in files) {
+      df <- read.table(paste(sc_reads_path, file, sep = "/"),
+                       header = T, sep = file_separator)
+      if (dim(df)[1] != n_snvs) {
+        print(paste("Error: The number of SNVs do not equal",
+                    n_snvs))
+      }
+      if (sum(df$REF_COUNT) + sum(df$ALT_COUNT) > 0) {
+        cell_name <- paste("c", cell_id, sep = "")
+        ret <- rbind(ret, data.frame(ID = ids, Cell = cell_name,
+                                     chr = df$CHROM, pos = df$POS,
+                                     a = df$REF_COUNT, d = df$ALT_COUNT + df$REF_COUNT,
+                                     SampleName = file))
+        cell_id <- cell_id + 1
+      }
+    }
+    return(ret)
+  }
+  stop("Error: No reads found.")
+}
+

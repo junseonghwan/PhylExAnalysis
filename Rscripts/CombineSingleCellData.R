@@ -6,12 +6,13 @@ sc_reads_path <- args[1]
 loci_path <- args[2]
 output_path <- args[3]
 
-sc_reads_path <- "~/data/TNBC/BCSA1/10x-run2/scRNA/"
-loci_path <- "~/data/TNBC/BCSA1/10x-run2/loci.txt"
-output_path <- "~/data/TNBC/BCSA1/10x-run2/"
-#sc_reads_path <- "~/PhylExAnalysis/_temp/MIN_VAF003/SS3/"
-#loci_path <- "~/PhylExAnalysis/_temp/MIN_VAF003/loci.txt"
-#output_path <- "~/PhylExAnalysis/_temp/MIN_VAF003/"
+# sc_reads_path <- "~/data/TNBC/BCSA1/10x-run2/scRNA/"
+# loci_path <- "~/data/TNBC/BCSA1/10x-run2/loci.txt"
+# output_path <- "~/data/TNBC/BCSA1/10x-run2/"
+
+sc_reads_path <- "~/data/cell-line/10X/scRNA/"
+loci_path <- "~/data/cell-line/10X/loci.txt"
+output_path <- "~/data/cell-line/10X/"
 
 library(PhylExR)
 
@@ -19,6 +20,10 @@ loci <- read.table(loci_path, header = T)
 
 sc <- CombineSingleCellReads(sc_reads_path, file_separator = "\t")
 sc_ <- sc[!(sc$a == 0 & sc$d == 0),]
+
+ret <- sc_ %>% group_by(Cell) %>% summarise(n = sum(d - a > 0))
+ret_ <- subset(ret, n >= 2)
+sc_ <- subset(sc_, Cell %in% ret_$Cell)
 
 if(!dir.exists(output_path)) {
   dir.create(output_path)

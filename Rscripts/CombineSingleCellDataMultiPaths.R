@@ -6,15 +6,11 @@ sc_reads_path <- args[1]
 loci_path <- args[2]
 output_path <- args[3]
 
-#sc_reads_path <- "~/data/cell-line/10X/scRNA/"
-#loci_path <- "~/data/cell-line/10X/loci.txt"
-#output_path <- "~/data/cell-line/10X/"
-
 library(PhylExR)
 
 loci <- read.table(loci_path, header = T)
 
-sc <- CombineSingleCellReads(sc_reads_path, file_separator = "\t")
+sc <- CombineSingleCellReadsMultiPaths(sc_reads_path, file_separator = "\t")
 sc_ <- sc[!(sc$a == 0 & sc$d == 0),]
 
 ret <- sc_ %>% group_by(Cell) %>% summarise(n = sum(d - a > 0))

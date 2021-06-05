@@ -24,7 +24,7 @@ if(!dir.exists(output_path)) {
   dir.create(output_path)
 }
 
-write.table(sc_, file = paste(output_path, "sc.txt", sep=""), sep="\t", row.names = F, quote = F, col.names = T)
+write.table(sc_[,c("ID", "Cell", "a", "d")], file = paste(output_path, "sc.txt", sep=""), sep="\t", row.names = F, quote = F, col.names = T)
 
 # Estimate hyperparameters.
 sc_hp <- EstimateHyperParameters(loci$ID, sc)

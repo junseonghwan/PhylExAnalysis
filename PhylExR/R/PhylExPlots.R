@@ -99,3 +99,33 @@ CoclusteringPlot <- function(sc, cell.df, base_size = 12) {
   p <- p + theme(legend.text = element_text(size=7, face="bold")) + guides(fill=guide_legend(title="Clone", size = 7))
   return(p)
 }
+
+# PlotDGE <- function(dge_results, bm, path, filename, title = "", num_genes_to_label = 10, check_significance = FALSE, FDR_THRESHOLD = 0.1, base_size = 12) {
+#   volcano.df <- data.frame(logfc=dge_results$table$logFC,
+#                            logpvalue=-log2(dge_results$table$PValue),
+#                            significant = dge_results$table$FDR < FDR_THRESHOLD,
+#                            ensembl_gene_id=rownames(dge_results))
+#   volcano.df <- left_join(volcano.df, bm)
+#   annotate.df <- volcano.df[1:num_genes_to_label,]
+#   p <- ggplot(volcano.df, aes(logfc, logpvalue)) + geom_point(col = cols[as.numeric(volcano.df$significant) + 1]) + theme_bw() + ylab("-Log p-value") + xlab("Log fold change")
+#   p <- p + theme(axis.title.x=element_text(size = base_size * 2), axis.title.y=element_text(size = base_size * 2), legend.text = element_text(size=base_size), title = element_text(size=base_size*2))
+#   p <- p + theme(axis.text.x = element_text(size = base_size*1.5), axis.text.y = element_text(size = base_size*1.5))
+#   p <- p + ggrepel::geom_label_repel(data = annotate.df, aes(label=external_gene_name),
+#                                      #label.size= 0.5,
+#                                      nudge_y = 0.2,
+#                                      nudge_x = 0.2,
+#                                      col = "black",
+#                                      segment.size  = 1,
+#                                      size = 8,
+#                                      max.overlaps = 20,
+#                                      segment.color = "black",
+#                                      direction     = "both")
+#   p <- p + ggtitle(title)
+#   ggsave(filename = paste(path, "/", filename, "_volcano.pdf", sep=""), width = 8, height = 8, units = "in")
+#   p <- PlotSigGenes(dge_results, mart)
+#   p <- p + ggtitle(title)
+#   p <- p + theme(axis.title.x=element_text(size = base_size * 2), axis.title.y=element_text(size = base_size * 2), legend.text = element_text(size=base_size), title = element_text(size=base_size*2))
+#   p <- p + theme(axis.text.x = element_text(size = base_size*1.2), axis.text.y = element_text(size = base_size*1.5))
+#   ggsave(filename = paste(path, "/", filename, "_sig_genes.pdf", sep=""), width = 8, height = 8, units = "in")
+# }
+

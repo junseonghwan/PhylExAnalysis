@@ -2,9 +2,6 @@ args = commandArgs(trailingOnly=TRUE)
 print(args)
 
 VCF_PATH <- as.character(args[1])
-# Path to bulk multi-regional data.
-# We will assume thet the number of directories in CNV_PATH corresponds tothe number of regions + germline.
-# The  directory names should match the names given in the VCF_PATH for each region.
 CNV_PATH <- as.character(args[2])
 OUTPUT_PATH <- as.character(args[3])
 
@@ -18,8 +15,8 @@ OPTIMAL_CNV_SOLN_FILE <- paste(CNV_SUFFIX_PATH, "optimalClusterSolution.txt", se
 
 GERMLINE_COLUMN_IDX <- 1
 MIN_VAF <- 0.03
-APPLY_PASS_FILTER <- FALSE # Set to TRUE if there is a filter to be used.
-FILTER_HLA_GENES <- TRUE
+APPLY_PASS_FILTER <- TRUE # Set to TRUE if there is a filter to be used.
+#FILTER_HLA_GENES <- TRUE
 
 library(biomaRt)
 library(PhylExR)

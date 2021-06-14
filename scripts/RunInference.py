@@ -20,7 +20,7 @@ parser.add_argument('-p', '--mh', help="Number of MH iterations within each MCMC
 parser.add_argument('-t', '--thinning', help="Thinning interval.", type=int, default = 20)
 parser.add_argument('-u', '--burn_in', help="Burn in.", type=int, default = 500)
 parser.add_argument('-o', '--overwrite', help="Overwrite main.config if it exists.", action="store_true")
-parser.add_argument('--geometric', help="Use geometric mean for single cell likelihood.", action="store_true")
+#parser.add_argument('--geometric', help="Use geometric mean for single cell likelihood.", action="store_true")
 parser.add_argument('--local', help="Run it locally.", action="store_true")
 parser.add_argument('--bulk_only', help="Run it without single cells.", action="store_true")
 args = parser.parse_args()
@@ -44,7 +44,8 @@ SEQ_ERR = 0.001
 VAR_CP_PROB = 0.25
 SC_BURSTY_ALPHA0 = 0.01
 SC_BURSTY_BETA0 = 0.01
-GEOMETRIC_MEAN = (1 if args.geometric else 0)
+#GEOMETRIC_MEAN = (1 if args.geometric else 0)
+GEOMETRIC_MEAN = 0
 
 np.random.seed(SEED)
 

@@ -1,18 +1,23 @@
-args = commandArgs(trailingOnly=TRUE)
-print(args)
-SEED <- as.numeric(args[1])
-DATA_PATH <- args[2]
-K_BEGIN <- as.numeric(args[3])
-K_END <- as.numeric(args[4])
+# args = commandArgs(trailingOnly=TRUE)
+# print(args)
+# SEED <- as.numeric(args[1])
+# DATA_PATH <- args[2]
+# K_BEGIN <- as.numeric(args[3])
+# K_END <- as.numeric(args[4])
+# BULK_FILE <- args[5]
+# OUTPUT_PATH <- args[6]
+# LOCI_FILE <- args[7]
 
-#SEED <- 157
-#DATA_PATH <- "/Users/seonghwanjun/data/cell-line/bulk/OV2295/genotype/"
-#K_BEGIN <- 3
-#K_END <- 12
+SEED <- 157
+DATA_PATH <- "~/PhylExAnalysis/data/"
+K_BEGIN <- 3
+K_END <- 12
+BULK_FILE <- "HGSOC_10X_bulk.txt"
+OUTPUT_PATH <- "~/PhylExAnalysis/_output/HGSOC_10X/canopy"
+LOCI_FILE <- "~/PhylExAnalysis/data/HGSOC_10X_id2loci.txt"
 
-SNV_PATH <- paste(DATA_PATH, "bulk.txt", sep="/")
-OUTPUT_PATH <- paste(DATA_PATH, "canopy", sep="/")
-FALCON_CNV_PATH <- paste(DATA_PATH, "falcon.txt", sep="/")
+SNV_PATH <- paste(DATA_PATH, BULK_FILE, sep="/")
+FALCON_CNV_PATH <- paste(DATA_PATH, "ov2295_falcon.txt", sep="/")
 
 library(Canopy)
 library(cardelino)
@@ -27,6 +32,7 @@ if (!dir.exists(OUTPUT_PATH)) {
 setwd(OUTPUT_PATH)
 
 bulk <- read.table(SNV_PATH, header=T, sep="\t")
+loci <- read.table(LOCI_FILE, header=T)
 X <- as.matrix(bulk$d - bulk$b)
 R <- as.matrix(bulk$b)
 rownames(X) <- bulk$ID
@@ -55,7 +61,7 @@ if (file.exists(FALCON_CNV_PATH)) {
     epsilonm <- as.matrix(temp[,"Minor.sd"])
 
     falcon.gr <- ConstructGranges(falcon$CHR, falcon$st_bp, width = falcon$end_bp - falcon$st_bp)
-    bulk.gr <- ConstructGranges(bulk$CHR, bulk$POS, width = 0)
+    bulk.gr <- ConstructGranges(loci$CHROM, loci$POS, width = 0)
     ret <- findOverlaps(bulk.gr, falcon.gr)
 
     Y <- matrix(0, nrow = snv_count, ncol = cna_count + 1)
@@ -128,7 +134,7 @@ save.image(file = paste(OUTPUT_PATH, "/canopy_postmcmc_image.rda", sep=""), comp
 # Output clustering of mutations for clustering accuracy evaluation.
 clone_name <- paste(output.tree$sna[,2], output.tree$sna[,3], sep="_")
 predicted <- cbind(ID=rownames(output.tree$sna), CloneID=clone_name)
-write.table(predicted, "/Users/seonghwanjun/data/cell-line/bulk/OV2295/Canopy/predicted.csv", sep=",", col.names=T, row.names=F, quote=F)
+#write.table(predicted, "/Users/seonghwanjun/data/cell-line/bulk/OV2295/Canopy/predicted.csv", sep=",", col.names=T, row.names=F, quote=F)
 
 # Now, we are ready to run Cardelino.
 # First, get the reads from single cell data.

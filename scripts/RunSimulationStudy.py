@@ -20,8 +20,8 @@ parser.add_argument('-m', '--mcmc', help="Number of MCMC iterations.", type=int,
 parser.add_argument('-p', '--mh', help="Number of MH iterations.", type=int, default = 2000)
 parser.add_argument('-t', '--thinning', help="Thinning interval.", type=int, default = 20)
 parser.add_argument('-u', '--burn_in', help="Burn_in.", type=int, default = 500)
-parser.add_argument('--geometric', help="Use geometric mean for single cell likelihood.", action="store_true")
-parser.add_argument('--genotype', help="Use genotype information.", action="store_true")
+#parser.add_argument('--geometric', help="Use geometric mean for single cell likelihood.", action="store_true")
+#parser.add_argument('--genotype', help="Use genotype information.", action="store_true")
 parser.add_argument('--local', help="Run it locally.", action="store_true")
 args = parser.parse_args()
 
@@ -53,7 +53,8 @@ VAR_CP_PROB = 0.25
 # SC_DROPOUT_BETA0 = 1
 SC_BURSTY_ALPHA0 = 0.01
 SC_BURSTY_BETA0 = 0.01
-GEOMETRIC_MEAN = (1 if args.geometric else 0)
+#GEOMETRIC_MEAN = (1 if args.geometric else 0)
+GEOMETRIC_MEAN = 0
 
 np.random.seed(SEED)
 
@@ -64,12 +65,14 @@ for rep_no in range(REP_BEGIN, REP_END):
         # write main.config file to REP_PATH
         for chain in range(args.nchains):
             seed = np.random.randint(100000000)
-            if args.genotype:
-                rep_bulk_path = CASE_PATH + "/genotype_ssm.txt"
-                output_path = CASE_PATH + "/genotype/"
-            else:
-                rep_bulk_path = CASE_PATH + "/simul_ssm.txt"
-                output_path = CASE_PATH + "/total_cn/"
+            rep_bulk_path = CASE_PATH + "/genotype_ssm.txt"
+            output_path = CASE_PATH + "/genotype/"
+            # if args.genotype:
+            #     rep_bulk_path = CASE_PATH + "/genotype_ssm.txt"
+            #     output_path = CASE_PATH + "/genotype/"
+            # else:
+            #     rep_bulk_path = CASE_PATH + "/simul_ssm.txt"
+            #     output_path = CASE_PATH + "/total_cn/"
             rep_scRNA_path = CASE_PATH + "/simul_sc.txt"
             rep_hyper_params_path = CASE_PATH + "/simul_sc_hp.txt"
 

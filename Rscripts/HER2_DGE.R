@@ -24,17 +24,18 @@ library(zinbwave)
 #source("R/CellAssign.R")
 #source("TNBC/Figure/Common.R")
 
-FEATURE_COUNTS_FILE <- "../data/HER2_fc.txt"
-BULK_DATA_FILE <- "../data/HER2_bulk.txt"
-SC_DATA_FILE <- "../data/HER2_sc.txt"
-SC_HP_FILE <- "../data/HER2_sc_hp.txt"
+FEATURE_COUNTS_FILE <- "~/PhylExAnalysis/data/HER2_fc.txt"
+BULK_DATA_FILE <- "~/PhylExAnalysis/data/HER2_bulk.txt"
+LOCI_FILE <- "~/PhylExAnalysis/data/HER2_id2loc.tsv"
+SC_DATA_FILE <- "~/PhylExAnalysis/data/HER2_sc.txt"
+SC_HP_FILE <- "~/PhylExAnalysis/data/HER2_sc_hp.txt"
 MIN_CELLS <- 2
 MIN_READS <- 5
 
-PHYLEX_OUT_PATH <- "../_output/HER2/"
+PHYLEX_OUT_PATH <- "~/PhylExAnalysis/data/HER2_results/"
 
-reps <- 0:3
-REP_COUNT <- length(reps)
+chains <- 0:3
+REP_COUNT <- length(chains)
 
 REGION_COUNT <- 5
 
@@ -51,7 +52,6 @@ mart <- useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
 
 # Perform DGE.
 fc <- read.table(FEATURE_COUNTS_FILE, header=T, row.names = 1, check.names = F)
-colnames(fc) <- gsub("Aligned", "", colnames(fc))
 
 # Remove MT genes
 bm <- getBM(attributes=c('ensembl_gene_id', 'hgnc_symbol', 'entrezgene_id', "chromosome_name"),
@@ -66,79 +66,69 @@ bm <- bm[idx,]
 mean(bm[,1] == rownames(fc), na.rm = T)
 dim(fc)
 
-log_liks <- rep(0, REP_COUNT)
-for (rep_no in reps) {
-    rep_path <- paste(PHYLEX_OUT_PATH, "/phylex/chain", rep_no, sep="")
-    log_liks[rep_no + 1] <- read.table(paste(rep_path, "/joint/tree0/log_lik.txt", sep=""), header=F)$V1
-}
-best_rep <- which.max(log_liks) - 1
-
-rep_path <- paste(PHYLEX_OUT_PATH, "/phylex/chain", best_rep, sep="")
 dat <- read.table(BULK_DATA_FILE, header=T, sep="\t")
+loci <- read.table(LOCI_FILE, header=T, sep="\t")
 sc <- read.table(SC_DATA_FILE, header=T, as.is = TRUE)
 sc_hp <- read.table(SC_HP_FILE, header=T, sep="\t")
 
-datum2node <- read.table(paste(rep_path, "/joint/tree0/datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
+datum2node <- read.table(paste(PHYLEX_OUT_PATH, "/datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
 names(datum2node) <- c("ID", "Node")
+
+# Assign cell to nodes.
+bursty_hp <- list(alpha=0.01, beta=0.01)
+cell.df <- AssignCellsBursty(sc, datum2node, bursty_hp, sc_hp, include_normal_clone = FALSE)
+
+# SNV assignment to nodes of the tree.
 table(datum2node$Node)
+# Cell assignment to nodes of the tree.
+table(cell.df$Node)
 
 # 0_0_1 does not have any cell assigned to it. Let's see why.
 bulk_temp <- datum2node[datum2node$Node == "0_0_1",]
 sc_temp <- subset(sc, ID %in% bulk_temp$ID)
 ret <- sc_temp %>% group_by(Cell) %>% summarise(n_b = sum(d - a > 0))
-ret$n_b # All cells have at most one variant read for mutation in 0_0_1.
+ret$n_b # All cells have at most one variant read for mutations in 0_0_1.
 
-# Let's check 0_0_0_0_1. It gets 20 cells assigned but hard to know if there indeed is a clone with one mutation branching out from the main lineage.
+# Let's check 0_0_0_0_1. It has cells assigned but the clone has only one SNV.
+# It's hard to know if there indeed is a clone with one mutation branching out from the main lineage.
 bulk_temp <- datum2node[datum2node$Node == "0_0_0_0_1",]
 sc_temp <- subset(sc, ID %in% bulk_temp$ID)
 ret <- sc_temp %>% group_by(Cell) %>% summarise(n_b = sum(d - a > 0))
 ret$n_b # Alle cells have at most one variant read for mutations in 0_0_0_0_1.
 
-# Merge any singleton cluster into its parent
-datum2node <- CollapseClones(datum2node)
-table(datum2node$Node)
-datum2node[datum2node$ID == "s343",]
-
-# Assign cell to nodes.
-bursty_hp <- list(alpha=0.01, beta=0.01)
-cell.df <- AssignCellsBursty(sc, datum2node, bursty_hp, sc_hp, include_normal_clone = FALSE)
-#cell.df$SampleName <- unique(sc$SampleName)
-#cell.df$Node <- as.character(cell.df$Node)
-#cell.df$Clone <- cell.df$Node
+# Merge any singleton cluster into its parent.
+datum2node <- CollapseClones(datum2node, MIN_SNV_COUNT = 1)
 table(cell.df$Node)
 
 # Collapse clones by number of cells.
 ret <- CollapseClonesByCellCount(datum2node, cell.df)
 datum2node <- ret$datum2node
-cell.df <- ret$cell.df
+
+# Re-assign cells using the collapsed clones.
+cell.df <- AssignCellsBursty(sc, datum2node, bursty_hp, sc_hp, include_normal_clone = F)
+
 table(datum2node$Node)
 table(cell.df$Node)
 
-# Re-assign cells using the collapsed clones.
-#cell.df <- AssignCellsBursty(sc, datum2node, bursty_hp, sc_hp, include_normal_clone = F)
-cell.df$SampleName <- unique(sc$SampleName)
-cell.df$Node <- as.character(cell.df$Node)
+# Set Clone = Node. We will update the clone names.
 cell.df$Clone <- cell.df$Node
-
-# Set clone names for datum2node
+# Set clone names for datum2node. Will be updated.
 datum2node$Clone <- datum2node$Node
+# We have a linear tree so we will name the clone by numbering them starting from 1.
 nodes <- unique(datum2node$Node)
 nodes_ordered <- nodes[order(nchar(nodes), nodes)]
 clone_count <- length(nodes_ordered)
 for (i in 1:clone_count) {
   idx <- datum2node$Node == nodes_ordered[i]
   datum2node$Clone[idx] <- i
-}
-
-
-# Since we have a lineage tree, let's re-label the clones from 1 to N.
-nodes <- unique(cell.df$Node)
-nodes_ordered <- nodes[order(nchar(nodes), nodes)]
-clone_count <- length(nodes_ordered)
-for (i in 1:clone_count) {
   idx <- cell.df$Node == nodes_ordered[i]
   cell.df$Clone[idx] <- i
 }
+
+# Let's count the assignment of SNVs and cells to clones.
+table(datum2node$Clone)
+table(cell.df$Clone)
+sum(table(cell.df$Clone))
 
 b_alleles <- lapply(as.character(dat$b), function(row) {
     as.numeric(strsplit(row, split = ",")[[1]])
@@ -159,27 +149,25 @@ cell.df$Depth <- unlist(clone_depth)
 fc_ <- fc[,colnames(fc) %in% cell.df$Cell]
 dim(fc_)
 
-# Sanity check: make sure we got the colnames of fc_ matching the SampleNames.
+# Sanity check: make sure we got the colnames of fc_ matching the Cell IDs.
 cell.df_idx <- match(colnames(fc_), cell.df$Cell)
 mean(colnames(fc_) == cell.df$Cell[cell.df_idx])
 
 sce <- SingleCellExperiment(assays = list(counts = as.matrix(fc_)),
                             rowData = data.frame(EnsemblID = rownames(fc_)),
-                            colData = data.frame(CellName = cell.df$SampleName[cell.df_idx], Node=cell.df$Node[cell.df_idx], Clone=cell.df$Clone[cell.df_idx], Region=cell.df$Region[cell.df_idx],
-                                                 Depth = cell.df$Depth[cell.df_idx]))
+                            colData = data.frame(CellName = cell.df$Cell[cell.df_idx], Node=cell.df$Node[cell.df_idx], Clone=cell.df$Clone[cell.df_idx]))
 
 # Filter out cells without sufficient reads.
 total_reads <- log1p(colSums(counts(sce)))
 plot(total_reads[order(total_reads, decreasing = T)])
-# Elbow at around 12
+# Elbow at around 12.
 sum(total_reads >= 12)
 sce <- sce[,total_reads >= 12]
 log1p(colSums(counts(sce)))
 
-
 # Let's select the genes in NanoString panel.
 library(xlsx)
-nano_string <- read.xlsx("../data/LBL-10025_nCounter_PanCancer_Human_Pathways_Panel_Gene_List.xlsx",
+nano_string <- read.xlsx("~/PhylExAnalysis/data/LBL-10025_nCounter_PanCancer_Human_Pathways_Panel_Gene_List.xlsx",
                          sheetIndex = 2, header = T, startRow = 2, endRow = 774)
 
 bm <- getBM(attributes=c('ensembl_gene_id', 'hgnc_symbol', 'entrezgene_id', "chromosome_name", "external_gene_name"),
@@ -199,8 +187,7 @@ table(col_filter)
 sce_nano <- sce_nano[,col_filter]
 logcounts(sce_nano) <- log1p(counts(sce_nano))
 
-
-# We are going to do DGE analysis using edgeR using NanoString genes -- 602 genes.
+# We are going to do DGE analysis using edgeR using NanoString genes -- 596 genes.
 dim(sce_nano)
 table(sce_nano$Clone)
 dge <- DGEList(assay(sce_nano), group = sce$Clone, remove.zeros = TRUE)
@@ -249,16 +236,7 @@ for (i in 1:(clone_count - 1)) {
   title <- paste(clones[idx], collapse = " vs ")
   lrt <- glmLRT(fit, contrast = GetContrast(idx, clone_count))
   dge_results <- topTags(lrt, gene_count)
-  
-  volcano.df <- data.frame(logfc=dge_results$table$logFC,
-                           logpvalue=-log2(dge_results$table$PValue),
-                           significant = dge_results$table$FDR < FDR_THRESHOLD,
-                           ensembl_gene_id=rownames(dge_results))
-  volcano.df <- left_join(volcano.df, bm)
-  names(volcano.df)[names(volcano.df) == "external_gene_name"] <- "gene_name"
-  MakeVolcanoPlot(volcano.df, plot_title = title)
-
-  #PlotDGE(dge_results, bm, dest_dir, filename, title)
+  PlotDGE(dge_results, bm, dest_dir, filename, title)
 }
 
 ### Pathway analysis. Use all genes, i.e., use sce not sce_nano. ###
@@ -320,7 +298,7 @@ dt <- decideTests(tfit)
 #indices <- ids2indices(Hs.c5, rownames(dge))
 
 # Perform camera test on Hallmark set.
-load("../data/human_H_v5p2.rdata")
+load("~/PhylExAnalysis/data/human_H_v5p2.rdata")
 indices <- ids2indices(Hs.H, rownames(dge))
 
 df <- data.frame()
@@ -395,18 +373,18 @@ cell.df_ <- subset(cell.df, Cell %in% colnames(counts_))
 dim(cell.df_)
 
 # counts: matrix of counts for each cell with rownames given by EntrezIDs.
-PathwayAverageExpression <- function(cell.df, pathway_entrez_ids, counts, avg = TRUE) {
+PathwayAverageExpression <- function(counts_, cell.df_, pathway_entrez_ids, avg = TRUE) {
   gene_idxs <- rownames(counts_) %in% pathway_entrez_ids
-  temp <- as.data.frame(matrix(counts_[gene_idxs,], ncol = dim(counts)[2], nrow = sum(gene_idxs)))
-  names(temp) <- colnames(counts)
+  temp <- as.data.frame(matrix(counts_[gene_idxs,], ncol = dim(counts_)[2], nrow = sum(gene_idxs)))
+  names(temp) <- colnames(counts_)
   if (avg) {
     pathway_expr <- colMeans(temp)
   } else {
     pathway_expr <- colSums(temp)
   }
   ret <- melt(pathway_expr)
-  ret.df <- data.frame(SampleName=rownames(ret), PathwayExpr=ret$value)
-  ret.df <- left_join(ret.df, cell.df)
+  ret.df <- data.frame(Cell=rownames(ret), PathwayExpr=ret$value)
+  ret.df <- left_join(ret.df, cell.df_)
   # Sort ret.df by CellID.
   ret.df <- ret.df[order(ret.df$Cell),]
   return(ret.df)
@@ -442,7 +420,7 @@ for (i in 1:length(Hs.H)) {
   pathway_entrez_ids <- Hs.H[[i]]
   pathway_name <- names(Hs.H)[i]
   pathway_names <- c(pathway_names, pathway_name)
-  ret <- PathwayAverageExpression(cell.df_, pathway_entrez_ids, counts_, avg=F)
+  ret <- PathwayAverageExpression(counts_, cell.df_, pathway_entrez_ids, avg=F)
 
   p <- PlotPathwayExprAverages(pathway_name, ret, log_scale = T)
   ggsave(filename = paste("../_figures/HER2_pos/Nano_", pathway_name, "_boxplot.pdf", sep=""),
@@ -452,9 +430,8 @@ for (i in 1:length(Hs.H)) {
   pathway_by_clone <- rbind(pathway_by_clone, data.frame(Clone=ret2$Clone, MeanExpr=ret2$avg, Pathway=pathway_name))
 
   pathway_by_cell[,i] <- ret$PathwayExpr
-  pathway_by_cell_list[[i]] <- data.frame(SampleName=ret$SampleName,
+  pathway_by_cell_list[[i]] <- data.frame(Cell=ret$Cell,
                                           Clone=ret$Clone,
-                                          Region=ret$Region,
                                           Pathway=pathway_name,
                                           PathwayExpr=ret$PathwayExpr)
 }
@@ -471,17 +448,16 @@ p <- ggplot(df, aes(Dim1, Dim2, colour=Clone)) + geom_point() + theme_classic()
 p <- p + theme(axis.title.x=element_text(size = base_size * 2), axis.title.y=element_text(size = base_size * 2), legend.text = element_text(size=base_size))
 p # Not very intersting? Separates clones 1-3 form 4-8.
 
-rownames(pathway_by_cell) <- pathway_by_cell_list[[1]]$SampleName
+rownames(pathway_by_cell) <- pathway_by_cell_list[[1]]$Cell
 colnames(pathway_by_cell) <- pathway_names
 pathway_sce <- SingleCellExperiment(assays = list(counts = t(as.matrix(pathway_by_cell))),
                                     rowData = data.frame(Pathway=pathway_names),
-                                    colData = data.frame(SampleName = rownames(pathway_by_cell),
-                                                         Clone=pathway_by_cell_list[[1]]$Clone,
-                                                         Region=pathway_by_cell_list[[1]]$Region))
+                                    colData = data.frame(Cell = rownames(pathway_by_cell),
+                                                         Clone=pathway_by_cell_list[[1]]$Clone))
 logcounts(pathway_sce) <- log1p(counts(pathway_sce))
 pathway_sce_umap <- runUMAP(pathway_sce, name="UMAP")
 W <- reducedDim(pathway_sce_umap, "UMAP")
-df <- data.frame(Dim1=W[,1], Dim2=W[,2], Clone=colData(pathway_sce)$Clone, colData(pathway_sce)$Region)
+df <- data.frame(Dim1=W[,1], Dim2=W[,2], Clone=colData(pathway_sce)$Clone)
 p <- ggplot(df, aes(Dim1, Dim2, col = Clone)) + geom_point() + theme_classic()
 p <- p + scale_color_brewer(type = "qual", palette = "Set1")
 p <- p + theme(axis.title.x=element_text(size = base_size * 2), axis.title.y=element_text(size = base_size * 2), legend.text = element_text(size=base_size))
@@ -498,54 +474,14 @@ df <- data.frame(Dim1=W[,1], Dim2=W[,2], Clone=colData(sce_umap_)$Clone)
 p <- ggplot(df, aes(Dim1, Dim2, colour=Clone)) + geom_point(size=base_size*0.2) + theme_classic()
 p
 
-#col_data <- colData(sce_umap_)
-
-# DO NOT RUN: not very interesting plots.
-#clone_shapes <- c(15:18)
-# clone_shapes <- c(4, 16, 17, 18)
-# for (i in 1:length(Hs.H)) {
-#   pathway_entrez_ids <- Hs.H[[i]]
-#   pathway_name <- names(Hs.H)[i]
-#   ret <- PathwayAverageExpression(cell.df_, pathway_entrez_ids, counts_, avg=F)
-#
-#   df <- data.frame(Dim1=W[,1], Dim2=W[,2], PathwayExpr = ret$PathwayExpr, Clone=as.numeric(colData(sce_umap_)$Clone))
-#   df$CloneShape <- df$Clone
-#   df$CloneShape[df$Clone == 1] <- "1"
-#   df$CloneShape[df$Clone == 2] <- "2"
-#   df$CloneShape[df$Clone == 3] <- "3"
-#   df$CloneShape[df$Clone >= 4] <- "4-8"
-#   df$CloneShape <- factor(df$CloneShape, levels = c("1", "2", "3", "4-8"))
-#
-#   p <- ggplot(df, aes(Dim1, Dim2, colour=log1p(PathwayExpr), shape=CloneShape)) + geom_point(size=base_size*0.2) + theme_classic()
-#   p <- p + scale_color_gradient2(
-#     low = "blue",
-#     mid = "yellow",
-#     high = "red",
-#     space = "Lab",
-#     midpoint = max(log1p(df$PathwayExpr))/2,
-#     na.value = "white",
-#     guide = "colourbar",
-#     aesthetics = "colour")
-#   p <- p + scale_shape_manual(values=clone_shapes)
-#   p <- p + labs(colour = "Log1p(expr)", shape = "Clone")
-#   p <- p + theme(axis.title.x = element_text(size = base_size*2)) + theme(axis.title.y = element_text(size = base_size*2))
-#   p <- p + theme(axis.text.x = element_text(size = base_size*1.5), axis.text.y = element_text(size = base_size*1.5))
-#   p <- p + ggtitle(FormatHallmarkName(pathway_name)) + theme(plot.title = element_text(size = base_size * 2))
-#   p <- p + theme(legend.text=element_text(size=base_size * 1.5), legend.title = element_text(size=base_size * 1.5))
-#   p <- p + guides(colour = guide_colorbar(order = 0), shape = guide_legend(order = 1))
-#   ggsave(filename = paste(dest_dir, "/Nano_", pathway_name, "_UMAP.pdf", sep=""), p)
-# }
-
-
 # Generate mutation plot.
 # For each clone, generate a plot of mutation status for genes in the NanoString list.
 # First, take intersection of SNVs used in the analysis with the genes in the NanoString list.
 # Plot the mutation status for each clone.
-
-exons <- read.table("/Users/seonghwanjun/data/references/exons.bed", header = F, as.is = T)
+exons <- read.table("~/PhylExAnalysis/data/exons.bed", header = F, as.is = T)
 names(exons) <- c("CHR", "START", "END", "GENE")
 exons.gr <- ConstructGranges(exons$CHR, start = exons$START, width = exons$END - exons$START)
-dat.gr <- ConstructGranges(dat$CHR, dat$POS, width = 0)
+dat.gr <- ConstructGranges(loci$CHR, loci$POS, width = 0)
 ret <- findOverlaps(dat.gr, exons.gr)
 
 df <- dat[ret@from,]
@@ -571,16 +507,16 @@ df.nano <- left_join(df.nano_pre, datum2node, by = "ID")
 df.nano <- df.nano[order(nchar(df.nano$Node), df.nano$Node),]
 df.nano[,c("Node", "Clone")]
 head(df.nano)
+dim(df.nano)
 
 # Do it again, use original datum2node
-datum2node_ <- read.table(paste(rep_path, "/joint/tree0/datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
+datum2node_ <- read.table(paste(PHYLEX_OUT_PATH, "datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
 names(datum2node_) <- c("ID", "Node")
 table(datum2node_$Node)
 df.nano_ <- left_join(df.nano_pre, datum2node_, by = "ID")
 df.nano_ <- df.nano_[order(nchar(df.nano_$Node), df.nano_$Node),]
 head(df.nano_)
 table(df.nano_$Node) # Nothing assigned to clones 0_0_1 or 0_0_0_0_1 -- it seems safe to ignore/merge those mutations.
-
 
 df.nano$GENE <- factor(df.nano$GENE, levels = df.nano$GENE)
 df.nano$MUT <- 1
@@ -612,14 +548,14 @@ p
 ggsave(filename = paste(dest_dir, "/Mutation_by_Clone.pdf", sep=""), p, width = 5.5, height = 11, units = "in")
 
 #### Plot inferred cellular prevalences for each region using a barplot. ###
-cell_prev <- read.table(paste(rep_path, "/joint/tree0/cellular_prev.tsv", sep=""), header=F, sep="\t", as.is = T)
+cell_prev <- read.table(paste(PHYLEX_OUT_PATH, "/cellular_prev.tsv", sep=""), header=F, sep="\t", as.is = T)
 cell_prevs <- matrix(as.numeric(unlist(lapply(cell_prev[,2], function(row) {
   strsplit(row, split = ",")[[1]]
 }))), ncol = 5, byrow = T)
 cell_prevs.df <- data.frame(ID = cell_prev[,1], CellularPrevalence = cell_prevs)
 names(cell_prevs.df) <- c("ID", REGIONS)
 
-unmodified_datum2node <- read.table(paste(rep_path, "/joint/tree0/datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
+unmodified_datum2node <- read.table(paste(PHYLEX_OUT_PATH, "/datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
 names(unmodified_datum2node) <- c("ID", "Node")
 
 lineage_datum2node <- subset(unmodified_datum2node, Node %in% datum2node$Node)

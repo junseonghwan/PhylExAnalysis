@@ -28,7 +28,7 @@ MakeVolcanoPlot <- function(volcano.df, plot_title, num_genes_to_label = 10, bas
   annotate.df2 <- temp.df[1:num_genes_to_label,]
   annotate.df <- rbind(annotate.df, annotate.df2)
   annotate.df <- unique(annotate.df)
-  p <- p + ggrepel::geom_label_repel(data = annotate.df, aes(label=gene_name),
+  p <- p + ggrepel::geom_label_repel(data = annotate.df, aes(label=hgnc_symbol),
                                      size = 8,
                                      nudge_x = 0.2,
                                      col = "black",
@@ -39,27 +39,23 @@ MakeVolcanoPlot <- function(volcano.df, plot_title, num_genes_to_label = 10, bas
 }
 
 #' @import ggplot2
-PlotSigGenes <- function(dge_results, mart, gene_plot_count = 50) {
-  # Plot the significantly differentially expressed genes along with their p-values.
-  ordering <- order(dge_results$table$PValue)
-  tbl <- dge_results$table[ordering,]
-  tbl$ensembl_gene_id <- rownames(tbl)
+PlotSigGenes <- function(volcano.df, plot_title, gene_plot_count = 50) {
+  ordering <- order(volcano.df$logpvalue, decreasing = T)
+  volcano.df <- volcano.df[ordering,]
+  volcano.df <- volcano.df[!is.na(volcano.df$hgnc_symbol),]
   
-  bm <- getBM(attributes=c('ensembl_gene_id', 'hgnc_symbol', "entrezgene_id",
-                           'start_position', 'end_position', 'percentage_gene_gc_content'),
-              filters = 'ensembl_gene_id',
-              values = tbl$ensembl_gene_id,
-              mart = mart, uniqueRows = T)
-  
-  ret <- dplyr::left_join(tbl, bm, by = "ensembl_gene_id")
-  ret <- ret[!is.na(ret$hgnc_symbol),]
-  ret.df <- data.frame(gene = ret$hgnc_symbol[1:gene_plot_count], logpvalue = -log(ret$PValue)[1:gene_plot_count], logFC=ret$logFC[1:gene_plot_count] > 0)
+  ret.df <- data.frame(gene = volcano.df$hgnc_symbol[1:gene_plot_count], logpvalue = volcano.df$logpvalue[1:gene_plot_count], logFC=volcano.df$logfc[1:gene_plot_count] > 0)
   ret.df$gene <- factor(ret.df$gene, levels = ret.df$gene)
+  
+  # Plot the significantly differentially expressed genes along with their p-values.
   ret.df$logFC[ret.df$logFC == FALSE] <- "DOWN"
   ret.df$logFC[ret.df$logFC == TRUE] <- "UP"
   p <- ggplot(ret.df, aes(gene, logpvalue, col=logFC)) + geom_point() + theme_bw() + xlab("Gene") + ylab("-Log p-value")
   p <- p + scale_color_manual(values=c("DOWN"="blue", "UP"="red"))
   p <- p + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), legend.title = element_blank())
+  p <- p + ggtitle(title)
+  p <- p + theme(axis.title.x=element_text(size = base_size * 2), axis.title.y=element_text(size = base_size * 2), legend.text = element_text(size=base_size), title = element_text(size=base_size*2))
+  p <- p + theme(axis.text.x = element_text(size = base_size*1.2), axis.text.y = element_text(size = base_size*1.5))
   return(p)
 }
 
@@ -100,32 +96,16 @@ CoclusteringPlot <- function(sc, cell.df, base_size = 12) {
   return(p)
 }
 
-# PlotDGE <- function(dge_results, bm, path, filename, title = "", num_genes_to_label = 10, check_significance = FALSE, FDR_THRESHOLD = 0.1, base_size = 12) {
-#   volcano.df <- data.frame(logfc=dge_results$table$logFC,
-#                            logpvalue=-log2(dge_results$table$PValue),
-#                            significant = dge_results$table$FDR < FDR_THRESHOLD,
-#                            ensembl_gene_id=rownames(dge_results))
-#   volcano.df <- left_join(volcano.df, bm)
-#   annotate.df <- volcano.df[1:num_genes_to_label,]
-#   p <- ggplot(volcano.df, aes(logfc, logpvalue)) + geom_point(col = cols[as.numeric(volcano.df$significant) + 1]) + theme_bw() + ylab("-Log p-value") + xlab("Log fold change")
-#   p <- p + theme(axis.title.x=element_text(size = base_size * 2), axis.title.y=element_text(size = base_size * 2), legend.text = element_text(size=base_size), title = element_text(size=base_size*2))
-#   p <- p + theme(axis.text.x = element_text(size = base_size*1.5), axis.text.y = element_text(size = base_size*1.5))
-#   p <- p + ggrepel::geom_label_repel(data = annotate.df, aes(label=external_gene_name),
-#                                      #label.size= 0.5,
-#                                      nudge_y = 0.2,
-#                                      nudge_x = 0.2,
-#                                      col = "black",
-#                                      segment.size  = 1,
-#                                      size = 8,
-#                                      max.overlaps = 20,
-#                                      segment.color = "black",
-#                                      direction     = "both")
-#   p <- p + ggtitle(title)
-#   ggsave(filename = paste(path, "/", filename, "_volcano.pdf", sep=""), width = 8, height = 8, units = "in")
-#   p <- PlotSigGenes(dge_results, mart)
-#   p <- p + ggtitle(title)
-#   p <- p + theme(axis.title.x=element_text(size = base_size * 2), axis.title.y=element_text(size = base_size * 2), legend.text = element_text(size=base_size), title = element_text(size=base_size*2))
-#   p <- p + theme(axis.text.x = element_text(size = base_size*1.2), axis.text.y = element_text(size = base_size*1.5))
-#   ggsave(filename = paste(path, "/", filename, "_sig_genes.pdf", sep=""), width = 8, height = 8, units = "in")
-# }
+#' @export
+PlotDGE <- function(dge_results, bm, outpath, filename, title = "", num_genes_to_label = 10, check_significance = FALSE, FDR_THRESHOLD = 0.1, base_size = 12) {
+  volcano.df <- data.frame(logfc=dge_results$table$logFC,
+                           logpvalue=-log2(dge_results$table$PValue),
+                           significant = dge_results$table$FDR < FDR_THRESHOLD,
+                           ensembl_gene_id=rownames(dge_results))
+  volcano.df <- left_join(volcano.df, bm, by = "ensembl_gene_id")
+  pl <- MakeVolcanoPlot(volcano.df, title)
+  ggsave(plot = pl, filename = paste(outpath, "/", filename, "_volcano.pdf", sep=""), width = 8, height = 8, units = "in")
+  p <- PlotSigGenes(volcano.df, title)
+  ggsave(plot = p, filename = paste(outpath, "/", filename, "_sig_genes.pdf", sep=""), width = 8, height = 8, units = "in")
+}
 

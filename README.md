@@ -25,7 +25,7 @@ cmake ..
 make install
 ```
 
-## PhylEx data input format
+## PhylEx input data
 
 The bulk data has 5 columns separated by tabs: `ID`, `b`, `d`, `major_cn`, `minor_cn`.
 The columns `b` and `d` are integer counts of the number of reads mapping to the variants and the total depth at a loci identified by `ID`.
@@ -34,7 +34,7 @@ If the data consists of multiple regions, the columns `b`, `d`, `major_cn`, `min
 The single cell data contains 4 columns: `ID`, `Cell`, `a`, `d`.
 The `ID` column corresponds to the `ID` column in the bulk data file. The `Cell` column identifies the cell name/ID. The column `a` is the number of reads mapping to the reference allele at `ID` for cell `Cell` and `d` is the total number of reads mapping to the loci identified by `ID`.
 
-Finally, there is a file containing the hyperparameters to be used in the inference. This file can be generated usign We recommend to auto-generate this file using the scripts provided (see the subsequent sections for the details).
+Finally, there is a file containing the hyperparameters to be used in the inference. We recommend to auto-generate this file using the scripts provided (see the subsequent sections for details).
 
 Example data files accepted by PhylEx are provided in `data/`. See for example, `data/HGSOC_bulk.txt`, `data/HGSOC_sc.txt`, and `data/HGSOC_sc_hp.txt`.
 
@@ -47,7 +47,7 @@ We have provided scripts to help generate the input file and the configuration f
 Relevant script:
 - `Rscripts/PrepareBulkData.R`
 
-We first processes the VCF file to generate the bulk data. An Rscript can be found in `Rscripts/PrepareBulkData.R`. This script accepts three arguments: `VCF_PATH`, `CNV_PATH`, and `OUTPUT_PATH`. The `VCF_PATH` is the path to `.vcf` file generated from a variant caller such as MuTect2. The `CNV_PATH` is to the path containing the outputs of TitanCNA. We will look for the optimal copy number profile selected by TitanCNA in the path `${CNV_PATH}/cna/results/titan/hmm/optimalClusterSolution.txt`.
+We first processes the VCF file to generate the bulk data. An Rscript `Rscripts/PrepareBulkData.R` is provided as a reference. This script accepts three arguments: `VCF_PATH`, `CNV_PATH`, and `OUTPUT_PATH`. The `VCF_PATH` is the path to `.vcf` file generated from a variant caller such as MuTect2. The `CNV_PATH` is to the path containing the outputs of TitanCNA. We will look for the optimal copy number profile selected by TitanCNA in the path: `${CNV_PATH}/cna/results/titan/hmm/optimalClusterSolution.txt`.
 This script outputs `bulk.txt` and `loci.txt`. 
 
 ### scRNA-data
@@ -58,28 +58,32 @@ Relevant scripts:
 - `scripts/ProcessSingleCellBAM.R`
 - `Rscripts/CombineSingleCellData.R`
 
-We assume that scRNA-seq data has been pre-processed, i.e., as alignment and procesing UMI barcodes, and available as one BAM file for each cell. We have an Rscript that takes `loci.txt` and location to the scRNA-seq BAM files to extract the read data (`scripts/ProcessSingleCellBAM.R`). We recommend batch run this R script on all BAM files using `scripts/ProcessSingleCells.py`. Then, use `Rscripts/CombineSingleCellData.R` to generate `sc.txt` and `sc_hp.txt` file.
+We assume that scRNA-seq data has been put through the standard pre-processing, i.e., alignment, procesing of UMI barcodes, etc, and are available as one BAM file for each cell. We have an Rscript that takes `loci.txt` outputted from the previous step and location to the scRNA-seq BAM files to extract the read data (`scripts/ProcessSingleCellBAM.R`). We recommend batch run this R script on all BAM files using `scripts/ProcessSingleCells.py`. Then, use `Rscripts/CombineSingleCellData.R` to generate `sc.txt` and `sc_hp.txt` file.
 
 ### Estimating the hyperparameters
 
 Relevant scripts:
 - `Rscripts/HGSOCEstimateHyperParams.R`
 
-Generating the bulk and scRNA data files can be done in custom ways as long as it meets the format described above. In such a case, we recommend to generate the hyper parameter file for the single cell data by following the example provided in `Rscripts/HGSOCEstimateHyperParams.R`. 
+Generating the bulk and scRNA data files can be accomplished without the above scripts as long as the final data meets the format described above. In such a case, we recommend to generate the hyper parameter file for the single cell data by following the example provided in `Rscripts/HGSOCEstimateHyperParams.R`. Essentially, the function `PhylExR::EstimateHyperParameters` performs the task of estimating the hyperparameters from the scRNA-seq data.
 
-## Run PhylEx
+## Running PhylEx
 
 Relevant scripts:
 - `scripts/RunInference.py`
 - `scripts/RunInference.sh`
 
-Once the input data are generated, we recommend to use a script to `scripts/RunInference.py` to generate the configuration file needed for running PhylEx.
+Once the input data are generated, we recommend to use a script to `scripts/RunInference.py`, which generates the configuration file and runs PhylEx.
 We recommend to use 4 chains and the number of MCMC iterations should depend on the number of SNVs. 
 As a point of reference, we used 20,000 iterations for HER2+ data, which had 432 SNVs and 369 cells and 10,000 iterations for HGSOC data, which had 67 SNVs and 360 cells.
+In general, start with a smaller number of iterations and monitor the log likelihood.
 
-## Anlaysis
+**We plan to add a feature to start a run from a previous run to facilitate this process.**
+
+<!-- ## Anlaysis
 
 A script analyzing the ovarian cancer cell line data is provided in `Rscripts/HGSOC_SS3_Analysis.R`. It uses the expression matrix data deposited on [Zenodo](https://doi.org/10.5281/zenodo.4533670) `HGSOC_fc.txt.zip`. We recommend to download and uncompress the file under `data/`.
+ -->
 
 ## Reproducibility
 The figures and tables presented in [PhylEx paper](https://www.biorxiv.org/content/10.1101/2021.02.16.431009v1) can be reproduced by the following steps.
@@ -87,7 +91,9 @@ The figures and tables presented in [PhylEx paper](https://www.biorxiv.org/conte
 1. Download the gene expression matrix files `HGSOC_fc.txt.zip` and `HER2_fc.txt.zip`from our [data repository](https://zenodo.org/record/4533670#.YMecUjZKg8Y) on Zenodo. Uncompress the files under `data/` where the input data files for PhylEx should be already available.
 2. Download the results files `HGSOC_results.zip` and `HER2_results.zip`. Uncompress the files in `data/`, which should create directories `HGSOC_results` and `HER2_results`. These are the MAP trees outputted by running PhylEx.
     - The results can also be reproduced by running PhylEx by running `RunInference.py` script on the input data available in `data/` (see above). 
-3. The phylo-phenotypic analysis for ovarian cancer cell-line data can be reproduced by running `Rscripts/HGSOC_SS3_Analysis.R`. The results for HER2+ cancer can be reproduced by running `Rscripts/HER2_DGE.R`.
+3. The phylo-phenotypic analysis for ovarian cancer cell-line data can be reproduced by running `Rscripts/HGSOC_SS3_Analysis.R`. The results for HER2+ cancer can be reproduced by running `Rscripts/HER2_DGE_NanoString.R`.
+    - For HER2+ analysis, we downloaded [PanCancer pathway genes](https://www.nanostring.com/products/ncounter-assays-panels/panel-selection-tool/) to be downloaded from NanoString (Seattle, WA). 
+    - It also requires exons, we have a pre-processed file available on `data/exons.bed`.
 
 ## Simulation data generation
 The code for simulating the data is provided in the script: `scripts/SimulateData.py`.

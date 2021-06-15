@@ -91,6 +91,7 @@ The figures and tables presented in [PhylEx paper](https://www.biorxiv.org/conte
 1. Download the gene expression matrix files `HGSOC_fc.txt.zip` and `HER2_fc.txt.zip`from our [data repository](https://zenodo.org/record/4533670#.YMecUjZKg8Y) on Zenodo. Uncompress the files under `data/` where the input data files for PhylEx should be already available.
 2. Download the results files `HGSOC_results.zip` and `HER2_results.zip`. Uncompress the files in `data/`, which should create directories `HGSOC_results` and `HER2_results`. These are the MAP trees outputted by running PhylEx.
     - The results can also be reproduced by running PhylEx by running `RunInference.py` script on the input data available in `data/` (see above). 
+    - Note that the script doesn't produce prettified figures as presented in the paper.
 3. The phylo-phenotypic analysis for ovarian cancer cell-line data can be reproduced by running `Rscripts/HGSOC_SS3_Analysis.R`. The results for HER2+ cancer can be reproduced by running `Rscripts/HER2_DGE_NanoString.R`.
     - For HER2+ analysis, we downloaded [PanCancer pathway genes](https://www.nanostring.com/products/ncounter-assays-panels/panel-selection-tool/) to be downloaded from NanoString (Seattle, WA). 
     - It also requires exons, we have a pre-processed file available on `data/exons.bed`.
@@ -169,7 +170,9 @@ python RunSimulationStudy.py 123 simul/ --nchains 4 -m 2000 -p 2000
 
 
 ## Running other softwares
-In the [PhylEx paper](https://www.biorxiv.org/content/10.1101/2021.02.16.431009v1), we have compared our method against [PhyloWGS](https://github.com/morrislab/phylowgs), [Canopy](https://github.com/yuchaojiang/Canopy), [ddClone](https://github.com/sohrabsa/ddclone), and [B-SCITE](https://github.com/smalikic/B-SCITE). The scripts are found under `scripts/misc/`.
+In the [PhylEx paper](https://www.biorxiv.org/content/10.1101/2021.02.16.431009v1), we have compared our method against [PhyloWGS](https://github.com/morrislab/phylowgs), [Canopy](https://github.com/yuchaojiang/Canopy), [ddClone](https://github.com/sohrabsa/ddclone), and [B-SCITE](https://github.com/smalikic/B-SCITE). The scripts are found under `scripts/misc/`. 
+
+These scripts were run locally/NSC Tetralith and will need work to get them running on your local machine. We are working on providing the scripts within a container/environment for maximal reproducibility.
 
 ## Contact
 For questions, please email: sjun2@fredhutch.org. Please report bugs using Github issue.

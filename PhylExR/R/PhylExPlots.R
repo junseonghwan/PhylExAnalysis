@@ -39,7 +39,7 @@ MakeVolcanoPlot <- function(volcano.df, plot_title, num_genes_to_label = 10, bas
 }
 
 #' @import ggplot2
-PlotSigGenes <- function(volcano.df, plot_title, gene_plot_count = 50) {
+PlotSigGenes <- function(volcano.df, plot_title, gene_plot_count = 50, base_size = 12) {
   ordering <- order(volcano.df$logpvalue, decreasing = T)
   volcano.df <- volcano.df[ordering,]
   volcano.df <- volcano.df[!is.na(volcano.df$hgnc_symbol),]

@@ -1,3 +1,4 @@
+rm(list=ls())
 library(PhylExR)
 
 library(biomaRt)
@@ -14,8 +15,9 @@ library(slingshot)
 library(zinbwave)
 
 DATA_PATH <- "~/PhylExAnalysis/data/"
-PHYLEX_OUTPUT_PATH <- "~/PhylExAnalysis/_output/HGSOC/phylex"
-ANALYSIS_OUTPUT_PATH <- "~/PhylExAnalysis/_output/HGSOC/analysis"
+#PHYLEX_OUTPUT_PATH <- "~/PhylExAnalysis/_output/HGSOC/phylex"
+PHYLEX_OUTPUT_PATH <- "~/PhylExAnalysis/data/HGSOC_results/"
+ANALYSIS_OUTPUT_PATH <- "~/PhylExAnalysis/_figures/HGSOC/"
 FEATURE_COUNTS_PATH <- paste(DATA_PATH, "HGSOC_fc.txt", sep="/")
 BULK_PATH <- paste(DATA_PATH, "HGSOC_bulk.txt", sep="/")
 SC_PATH <- paste(DATA_PATH, "HGSOC_sc.txt", sep="/")
@@ -45,43 +47,45 @@ gt <- read.table(GT_PATH, header=T, as.is = T)
 validation_idx <- which(gt$CloneName %in% valid_clones)
 mart <- useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
 
-# Find the best replicate to use for evaluation
-best_chain <- FindBestRep(chain_paths = PHYLEX_OUTPUT_PATH, chains = chains)
-best_chain_path <- paste(PHYLEX_OUTPUT_PATH, "/chain", best_chain, sep="")
+# Find the best replicate to use for evaluation.
+# best_chain <- FindBestRep(chain_paths = PHYLEX_OUTPUT_PATH, chains = chains)
+# best_chain_path <- paste(PHYLEX_OUTPUT_PATH, "/chain", best_chain, sep="")
+# datum2node <- read.table(paste(best_chain_path, "/joint/tree0/datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
 
-datum2node <- read.table(paste(best_chain_path, "/joint/tree0/datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
+datum2node <- read.table(paste(PHYLEX_OUTPUT_PATH, "/datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
 names(datum2node) <- c("ID", "Node")
 table(datum2node$Node)
-datum2node_ <- CollapseClones(datum2node, MIN_SNV_COUNT)
-table(datum2node_$Node)
 
-# Merge any node with MIN_SNV_COUNT or fewer into its parent.
-
-temp <- left_join(datum2node_, gt)
+temp <- left_join(datum2node, gt)
 names(temp) <- c("ID", "Node", "CloneName")
 temp <- temp[validation_idx,]
 head(temp)
 tree <- temp[order(nchar(temp$Node), temp$Node),]
-head(tree)
+table(tree$CloneName)
+table(tree$Node)
 # We can map the inferred nodes to ground truth clones:
 # 0_0: Ancestral
-# 0_0_0: EF/EFGHI
-# 0_0_1: ABCD
-# 0_0_1_0_0: CD/C
+# 0_0_0: ABCD
+# 0_0_1: EF/EFGHI
+# 0_0_0_0: CD
+# 0_0_0_0_0: C
 # Note: node names may vary depending on the number of chains and length of MCMC iterations.
 unique(tree[,-1])
 
-# Assign cell to nodes.
-cell.df <- AssignCellsBursty(sc, datum2node_, bursty_hp, sc_hp, include_normal_clone = FALSE)
-cell.df$SampleName <- unique(sc$SampleName)
-cell.df$Node <- as.character(cell.df$Node)
-cell.df$Clone <- cell.df$Node
-table(cell.df$Node)
-
-# Plot single cell data before and after co-clustering
+cell.df <- AssignCellsBursty(sc, datum2node, bursty_hp, sc_hp, include_normal_clone = FALSE)
 pl <- PlotTotalCounts(sc)
 pl_ <- CoclusteringPlot(sc, cell.df)
 ggsave(pl_, filename = paste(ANALYSIS_OUTPUT_PATH, "coclustering.pdf", sep="/"), height = 8, width = 3.5, units = "in")
+
+# For the purposes of DGE, we will merge any node with MIN_SNV_COUNT or fewer into its parent.
+datum2node_ <- CollapseClones(datum2node, MIN_SNV_COUNT)
+table(datum2node_$Node)
+
+# Assign cell to nodes.
+cell.df <- AssignCellsBursty(sc, datum2node_, bursty_hp, sc_hp, include_normal_clone = FALSE)
+cell.df$Node <- as.character(cell.df$Node)
+cell.df$Clone <- cell.df$Node
+table(cell.df$Node)
 
 # Analyze the gene expression data
 feature_counts <- fc[,names(fc) %in% unique(sc$Cell)]
@@ -147,7 +151,7 @@ sig_genes <- rownames(dge_results$table[dge_results$table$FDR < FDR_THRESHOLD,])
 gene_names <- ConvertToGeneName(rownames(dge_results), mart)
 gene_names <- gene_names[match(rownames(dge_results), gene_names$ensembl_gene_id),]
 mean(gene_names$ensembl_gene_id == rownames(dge_results))
-volcano.df <- data.frame(gene_name=as.character(gene_names$external_gene_name), logfc=dge_results$table$logFC, logpvalue=-log(dge_results$table$PValue), significant = dge_results$table$FDR < FDR_THRESHOLD)
+volcano.df <- data.frame(hgnc_symbol=as.character(gene_names$external_gene_name), logfc=dge_results$table$logFC, logpvalue=-log(dge_results$table$PValue), significant = dge_results$table$FDR < FDR_THRESHOLD)
 pl <- MakeVolcanoPlot(volcano.df, "Ancestral vs EF")
 ggsave(pl, filename = paste(ANALYSIS_OUTPUT_PATH, "/Ancestral_vs_EF_Volcano.pdf", sep=""), width = 8, height = 8, units = "in")
 
@@ -157,7 +161,7 @@ sig_genes <- rownames(dge_results$table[dge_results$table$FDR < FDR_THRESHOLD,])
 gene_names <- ConvertToGeneName(rownames(dge_results), mart)
 gene_names <- gene_names[match(rownames(dge_results), gene_names$ensembl_gene_id),]
 mean(gene_names$ensembl_gene_id == rownames(dge_results))
-volcano.df <- data.frame(gene_name=as.character(gene_names$external_gene_name), logfc=dge_results$table$logFC, logpvalue=-log(dge_results$table$PValue), significant = dge_results$table$FDR < FDR_THRESHOLD)
+volcano.df <- data.frame(hgnc_symbol=as.character(gene_names$external_gene_name), logfc=dge_results$table$logFC, logpvalue=-log(dge_results$table$PValue), significant = dge_results$table$FDR < FDR_THRESHOLD)
 pl <- MakeVolcanoPlot(volcano.df, "ABCD vs EF")
 ggsave(pl, filename = paste(ANALYSIS_OUTPUT_PATH, "/ABCD_vs_EF_Volcano.pdf", sep=""), width = 8, height = 8, units = "in")
 

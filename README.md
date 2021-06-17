@@ -29,7 +29,7 @@ make install
 
 The bulk data has 5 columns separated by tabs: `ID`, `b`, `d`, `major_cn`, `minor_cn`.
 The columns `b` and `d` are integer counts of the number of reads mapping to the variants and the total depth at a loci identified by `ID`.
-If the data consists of multiple regions, the columns `b`, `d`, `major_cn`, `minor_cn` should contain the counts separated by comma.
+If the data consists of multiple regions, the columns `b`, `d`, `major_cn`, `minor_cn` should contain the counts separated by comma. The user may also specify 9 columns including CHR, POS, REF, and ALT alleles in the following order: `ID`, `CHR`, `POS`, `REF`, `ALT`, `b`, `d`, `major_cn`, `minor_cn`. The chromosome, position, reference allele, and alternate allele columns are simply ignored by PhylEx but having them in one data file with the bulk data may be desirable for further analysis.
 
 The single cell data contains 4 columns: `ID`, `Cell`, `a`, `d`.
 The `ID` column corresponds to the `ID` column in the bulk data file. The `Cell` column identifies the cell name/ID. The column `a` is the number of reads mapping to the reference allele at `ID` for cell `Cell` and `d` is the total number of reads mapping to the loci identified by `ID`.
@@ -40,7 +40,7 @@ Example data files accepted by PhylEx are provided in `data/`. See for example, 
 
 ## Real biological data processing
 
-We have provided scripts to help generate the input file and the configuration file needed to run PhylEx in this section.
+We have provided scripts to help generate the input files and the configuration file needed to run PhylEx in this section.
 
 ### Bulk data
 
@@ -80,21 +80,17 @@ In general, start with a smaller number of iterations and monitor the log likeli
 
 **We plan to add a feature to start a run from a previous run to facilitate this process.**
 
-<!-- ## Anlaysis
-
-A script analyzing the ovarian cancer cell line data is provided in `Rscripts/HGSOC_SS3_Analysis.R`. It uses the expression matrix data deposited on [Zenodo](https://doi.org/10.5281/zenodo.4533670) `HGSOC_fc.txt.zip`. We recommend to download and uncompress the file under `data/`.
- -->
 
 ## Reproducibility
-The figures and tables presented in [PhylEx paper](https://www.biorxiv.org/content/10.1101/2021.02.16.431009v1) can be reproduced by the following steps.
+The figures and tables presented in [PhylEx paper](https://www.biorxiv.org/content/10.1101/2021.02.16.431009v1) can be reproduced from the results deposited to [Zenodo](https://zenodo.org/record/4950446#.YMtuyZNKg8Y). We have added resource files needed in the analysis to `data/` directory.
 
-1. Download the gene expression matrix files `HGSOC_fc.txt.zip` and `HER2_fc.txt.zip`from our [data repository](https://zenodo.org/record/4533670#.YMecUjZKg8Y) on Zenodo. Uncompress the files under `data/` where the input data files for PhylEx should be already available.
-2. Download the results files `HGSOC_results.zip` and `HER2_results.zip`. Uncompress the files in `data/`, which should create directories `HGSOC_results` and `HER2_results`. These are the MAP trees outputted by running PhylEx.
-    - The results can also be reproduced by running PhylEx by running `RunInference.py` script on the input data available in `data/` (see above). 
-    - Note that the script doesn't produce prettified figures as presented in the paper.
-3. The phylo-phenotypic analysis for ovarian cancer cell-line data can be reproduced by running `Rscripts/HGSOC_SS3_Analysis.R`. The results for HER2+ cancer can be reproduced by running `Rscripts/HER2_DGE_NanoString.R`.
-    - For HER2+ analysis, we downloaded [PanCancer pathway genes](https://www.nanostring.com/products/ncounter-assays-panels/panel-selection-tool/) to be downloaded from NanoString (Seattle, WA). 
-    - It also requires exons, we have a pre-processed file available on `data/exons.bed`.
+1. Download the results files for HGSOC and HER2+: `HGSOC_SS#.tar.gz`, `HER2_POS_SS3.tar.gz`. Uncompress the files under `data/`.
+2. Run `Rscripts/HER2_DGE.R` to reproduce figures for HER2+ breast cancer.
+    - For HER2+ analysis, we downloaded [PanCancer pathway genes](https://www.nanostring.com/products/ncounter-assays-panels/panel-selection-tool/) to be downloaded from NanoString (Seattle, WA) -- made available as `data/LBL-10025_nCounter_PanCancer_Human_Pathways_Panel_Gene_List.xlsx`.
+    - It also requires exons, we have a pre-processed the file as `data/exons.bed`.
+    - Finally, we use MSigDB's Hallmark geneset available as `data/human_H_v5p2.rdata`.
+3. The phylo-phenotypic analysis for ovarian cancer cell-line data can be reproduced by running `Rscripts/HGSOC_SS3_DGE.R` and `Rscripts/HGSOC_SS3_coclustering_plot.R`. 
+    - For pathway analysis, we use MSigDB's ontology geneset available as `data/human_c5_v5p2.rdata`.
 
 ## Simulation data generation
 The code for simulating the data is provided in the script: `scripts/SimulateData.py`.
@@ -169,10 +165,12 @@ python RunSimulationStudy.py 123 simul/ --nchains 4 -m 2000 -p 2000
 ```
 
 
-## Running other softwares
+## Comparison to other softwares
 In the [PhylEx paper](https://www.biorxiv.org/content/10.1101/2021.02.16.431009v1), we have compared our method against [PhyloWGS](https://github.com/morrislab/phylowgs), [Canopy](https://github.com/yuchaojiang/Canopy), [ddClone](https://github.com/sohrabsa/ddclone), and [B-SCITE](https://github.com/smalikic/B-SCITE). The scripts are found under `scripts/misc/`. 
 
 These scripts were run locally/NSC Tetralith and will need work to get them running on your local machine. We are working on providing the scripts within a container/environment for maximal reproducibility.
+
+For evaluation, we wrote Jupyter notebooks, the files can be found under `notebook/HGSOC` for evaluation concerning HGSOC cell-line and `notebook/simul` for evaluation concerning simulated data.
 
 ## Contact
 For questions, please email: sjun2@fredhutch.org. Please report bugs using Github issue.

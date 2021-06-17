@@ -59,6 +59,8 @@ PlotSigGenes <- function(volcano.df, plot_title, gene_plot_count = 50, base_size
   return(p)
 }
 
+#' @export
+#' @import ggplot2
 PlotTotalCounts <- function(sc,  base_size = 12) {
   sc$b <- sc$d - sc$a
   p <- ggplot(sc, aes(ID, Cell, fill = log(d + 1))) + geom_tile(colour = "white")
@@ -73,7 +75,9 @@ PlotTotalCounts <- function(sc,  base_size = 12) {
   return(p)
 }
 
-CoclusteringPlot <- function(sc, cell.df, base_size = 12) {
+#' @export
+#' @import ggplot2
+CoclusteringPlot <- function(sc, cell.df, datum2node_, base_size = 12) {
   sc$b <- sc$d - sc$a
   sc_join <- left_join(sc, cell.df, by = "Cell")
   cells_clustered <- cell.df[order(cell.df$Node), "Cell"]
@@ -92,20 +96,21 @@ CoclusteringPlot <- function(sc, cell.df, base_size = 12) {
   p <- p + theme(axis.title.y =element_text(size = base_size * 2))
   p <- p + theme(axis.text.x = element_blank(), axis.text.y = element_blank())
   p <- p + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-  p <- p + theme(legend.text = element_text(size=7, face="bold")) + guides(fill=guide_legend(title="Clone", size = 7))
+  p <- p + theme(legend.text = element_text(size=base_size, face="bold")) + guides(fill=guide_legend(title="Clone", size = base_size))
   return(p)
 }
 
 #' @export
-PlotDGE <- function(dge_results, bm, outpath, filename, title = "", num_genes_to_label = 10, check_significance = FALSE, FDR_THRESHOLD = 0.1, base_size = 12) {
+PlotDGE <- function(dge_results, bm, title = "", num_genes_to_label = 10, check_significance = FALSE, FDR_THRESHOLD = 0.1, base_size = 12) {
   volcano.df <- data.frame(logfc=dge_results$table$logFC,
                            logpvalue=-log2(dge_results$table$PValue),
                            significant = dge_results$table$FDR < FDR_THRESHOLD,
                            ensembl_gene_id=rownames(dge_results))
   volcano.df <- left_join(volcano.df, bm, by = "ensembl_gene_id")
-  pl <- MakeVolcanoPlot(volcano.df, title)
-  ggsave(plot = pl, filename = paste(outpath, "/", filename, "_volcano.pdf", sep=""), width = 8, height = 8, units = "in")
-  p <- PlotSigGenes(volcano.df, title)
-  ggsave(plot = p, filename = paste(outpath, "/", filename, "_sig_genes.pdf", sep=""), width = 8, height = 8, units = "in")
+  volcano.pl <- MakeVolcanoPlot(volcano.df, title)
+  #ggsave(plot = volcano.pl, filename = paste(outpath, "/", filename, "_volcano.pdf", sep=""), width = 8, height = 8, units = "in")
+  sig.pl <- PlotSigGenes(volcano.df, title)
+  #ggsave(plot = p, filename = paste(outpath, "/", filename, "_sig_genes.pdf", sep=""), width = 8, height = 8, units = "in")
+  return(list(volcano=volcano.pl, sig=sig.pl))
 }
 

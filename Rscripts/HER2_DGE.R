@@ -24,15 +24,14 @@ library(zinbwave)
 #source("R/CellAssign.R")
 #source("TNBC/Figure/Common.R")
 
-FEATURE_COUNTS_FILE <- "~/PhylExAnalysis/data/HER2_fc.txt"
-BULK_DATA_FILE <- "~/PhylExAnalysis/data/HER2_bulk.txt"
-LOCI_FILE <- "~/PhylExAnalysis/data/HER2_id2loc.tsv"
-SC_DATA_FILE <- "~/PhylExAnalysis/data/HER2_sc.txt"
-SC_HP_FILE <- "~/PhylExAnalysis/data/HER2_sc_hp.txt"
+FEATURE_COUNTS_FILE <- "~/PhylExAnalysis/data/HER2_POS_SS3/featureCounts.txt"
+BULK_DATA_FILE <- "~/PhylExAnalysis/data/HER2_POS_SS3/bulk.txt"
+SC_DATA_FILE <- "~/PhylExAnalysis/data/HER2_POS_SS3/sc.txt"
+SC_HP_FILE <- "~/PhylExAnalysis/data/HER2_POS_SS3/sc_hp.txt"
 MIN_CELLS <- 2
 MIN_READS <- 5
 
-PHYLEX_OUT_PATH <- "~/PhylExAnalysis/data/HER2_results/"
+PHYLEX_OUT_PATH <- "~/PhylExAnalysis/data/HER2_POS_SS3/phylex/"
 
 chains <- 0:3
 REP_COUNT <- length(chains)
@@ -47,12 +46,13 @@ chrs <- c(1:22, "X", "Y")
 
 REGIONS <- c("A", "B", "C", "D", "E")
 
+# Read in gene expression matrix.
+fc <- read.table(FEATURE_COUNTS_FILE, header=T, row.names = 1, check.names = F)
+# Remove unwanted suffix from the column names of the gene expression matrix.
+colnames(fc) <- gsub(pattern = "Aligned", replacement = "", colnames(fc))
+
 # Get biomart.
 mart <- useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
-
-# Perform DGE.
-fc <- read.table(FEATURE_COUNTS_FILE, header=T, row.names = 1, check.names = F)
-
 # Remove MT genes
 bm <- getBM(attributes=c('ensembl_gene_id', 'hgnc_symbol', 'entrezgene_id', "chromosome_name"),
             filters = 'ensembl_gene_id',
@@ -67,11 +67,14 @@ mean(bm[,1] == rownames(fc), na.rm = T)
 dim(fc)
 
 dat <- read.table(BULK_DATA_FILE, header=T, sep="\t")
-loci <- read.table(LOCI_FILE, header=T, sep="\t")
+loci <- data.frame(CHR = dat$CHR, POS = dat$POS)
 sc <- read.table(SC_DATA_FILE, header=T, as.is = TRUE)
 sc_hp <- read.table(SC_HP_FILE, header=T, sep="\t")
 
-datum2node <- read.table(paste(PHYLEX_OUT_PATH, "/datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
+chains <- 0:3
+best_chain <- FindBestRep(PHYLEX_OUT_PATH, chains)
+
+datum2node <- read.table(paste(PHYLEX_OUT_PATH, "chain", best_chain, "/joint/tree0/datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
 names(datum2node) <- c("ID", "Node")
 
 # Assign cell to nodes.
@@ -106,6 +109,8 @@ datum2node <- ret$datum2node
 
 # Re-assign cells using the collapsed clones.
 cell.df <- AssignCellsBursty(sc, datum2node, bursty_hp, sc_hp, include_normal_clone = F)
+mean(unique(sc$Cell) == cell.df$Cell)
+cell.df$SampleName <- unique(sc$SampleName)
 
 table(datum2node$Node)
 table(cell.df$Node)
@@ -141,21 +146,21 @@ total_alleles <- matrix(unlist(total_alleles), byrow = T, nrow = dim(dat)[1], nc
 vafs <- b_alleles/total_alleles
 hist(rowMeans(vafs))
 
-clone_depth <- lapply(cell.df$Clone, function(x) {
+clone_depth <- lapply(cell.df$Node, function(x) {
   length(as.numeric(strsplit(x, split = "_")[[1]]))
 })
 cell.df$Depth <- unlist(clone_depth)
 
-fc_ <- fc[,colnames(fc) %in% cell.df$Cell]
+fc_ <- fc[,colnames(fc) %in% cell.df$SampleName]
 dim(fc_)
 
 # Sanity check: make sure we got the colnames of fc_ matching the Cell IDs.
-cell.df_idx <- match(colnames(fc_), cell.df$Cell)
-mean(colnames(fc_) == cell.df$Cell[cell.df_idx])
+cell.df_idx <- match(colnames(fc_), cell.df$SampleName)
+mean(colnames(fc_) == cell.df$SampleName[cell.df_idx])
 
 sce <- SingleCellExperiment(assays = list(counts = as.matrix(fc_)),
                             rowData = data.frame(EnsemblID = rownames(fc_)),
-                            colData = data.frame(CellName = cell.df$Cell[cell.df_idx], Node=cell.df$Node[cell.df_idx], Clone=cell.df$Clone[cell.df_idx]))
+                            colData = data.frame(CellName = cell.df$Cell[cell.df_idx], Node=cell.df$Node[cell.df_idx], Clone=cell.df$Clone[cell.df_idx], SampleName=cell.df$SampleName[cell.df_idx]))
 
 # Filter out cells without sufficient reads.
 total_reads <- log1p(colSums(counts(sce)))
@@ -174,6 +179,7 @@ bm <- getBM(attributes=c('ensembl_gene_id', 'hgnc_symbol', 'entrezgene_id', "chr
             filters = 'external_gene_name',
             values = nano_string$Official.Symbol,
             mart = mart, uniqueRows = T)
+# Check that there aren't any NAs.
 sum(is.na(bm$ensembl_gene_id))
 
 nano_list_idx <- rownames(sce) %in% bm$ensembl_gene_id
@@ -217,7 +223,7 @@ num_genes_to_label <- 10
 bm <- bm[!duplicated(paste(bm$ensembl_gene_id, bm$hgnc_symbol, sep="_")),]
 dim(bm)
 
-dest_dir <- "../_figures/HER2_pos"
+dest_dir <- "~/PhylExAnalysis/_figures/HER2_POS"
 if (!dir.exists(dest_dir)) {
   dir.create(dest_dir, recursive = T)
 }
@@ -236,7 +242,10 @@ for (i in 1:(clone_count - 1)) {
   title <- paste(clones[idx], collapse = " vs ")
   lrt <- glmLRT(fit, contrast = GetContrast(idx, clone_count))
   dge_results <- topTags(lrt, gene_count)
-  PlotDGE(dge_results, bm, dest_dir, filename, title)
+  plots <- PlotDGE(dge_results, bm, title)
+  
+  ggsave(plot = plots$volcano, filename = paste(dest_dir, paste(filename, "_volcano.pdf", sep=""), sep="/"), width = 8, height = 6, units = "in")
+  ggsave(plot = plots$sig, filename = paste(dest_dir, paste(filename, "_sig_genes.pdf", sep=""), sep="/"), width = 8, height = 6, units = "in")
 }
 
 ### Pathway analysis. Use all genes, i.e., use sce not sce_nano. ###
@@ -369,7 +378,7 @@ rownames(counts_) <- bm$entrezgene_id[not_na_idx]
 dim(counts_)
 head(counts_)
 
-cell.df_ <- subset(cell.df, Cell %in% colnames(counts_))
+cell.df_ <- subset(cell.df, SampleName %in% colnames(counts_))
 dim(cell.df_)
 
 # counts: matrix of counts for each cell with rownames given by EntrezIDs.
@@ -383,7 +392,7 @@ PathwayAverageExpression <- function(counts_, cell.df_, pathway_entrez_ids, avg 
     pathway_expr <- colSums(temp)
   }
   ret <- melt(pathway_expr)
-  ret.df <- data.frame(Cell=rownames(ret), PathwayExpr=ret$value)
+  ret.df <- data.frame(SampleName=rownames(ret), PathwayExpr=ret$value)
   ret.df <- left_join(ret.df, cell.df_)
   # Sort ret.df by CellID.
   ret.df <- ret.df[order(ret.df$Cell),]
@@ -408,7 +417,7 @@ PlotPathwayExprAverages <- function(pathway_name, df, log_scale=F, base_size = 1
   }
   p <- p + ggtitle(FormatHallmarkName(pathway_name)) + theme(plot.title = element_text(size = base_size * 2))
   p <- p + theme(axis.title.x=element_text(size = base_size * 2), axis.title.y=element_text(size = base_size * 2))
-  p <- p + theme(axis.text.x = element_text(size = base_size * 2, angle = 270), axis.text.y = element_text(size = base_size * 2))
+  p <- p + theme(axis.text.x = element_text(size = base_size * 2), axis.text.y = element_text(size = base_size * 2))
   return(p)
 }
 
@@ -431,6 +440,7 @@ for (i in 1:length(Hs.H)) {
 
   pathway_by_cell[,i] <- ret$PathwayExpr
   pathway_by_cell_list[[i]] <- data.frame(Cell=ret$Cell,
+                                          SampleName=ret$SampleName,
                                           Clone=ret$Clone,
                                           Pathway=pathway_name,
                                           PathwayExpr=ret$PathwayExpr)
@@ -439,15 +449,6 @@ for (i in 1:length(Hs.H)) {
 names(pathway_by_clone)
 unique(pathway_by_clone$Pathway)
 
-# t-SNE on clones at pathway level
-set.seed(1)
-ret <- dcast(pathway_by_clone, formula = "Clone ~ Pathway", value.var = "MeanExpr")
-tsne_ret <- Rtsne::Rtsne(log1p(ret[,-1]), k = 2, perplexity=0.5, max_iter=5000)
-df <- data.frame(Dim1=tsne_ret$Y[,1], Dim2=tsne_ret$Y[,2], Clone=ret$Clone)
-p <- ggplot(df, aes(Dim1, Dim2, colour=Clone)) + geom_point() + theme_classic()
-p <- p + theme(axis.title.x=element_text(size = base_size * 2), axis.title.y=element_text(size = base_size * 2), legend.text = element_text(size=base_size))
-p # Not very intersting? Separates clones 1-3 form 4-8.
-
 rownames(pathway_by_cell) <- pathway_by_cell_list[[1]]$Cell
 colnames(pathway_by_cell) <- pathway_names
 pathway_sce <- SingleCellExperiment(assays = list(counts = t(as.matrix(pathway_by_cell))),
@@ -455,6 +456,8 @@ pathway_sce <- SingleCellExperiment(assays = list(counts = t(as.matrix(pathway_b
                                     colData = data.frame(Cell = rownames(pathway_by_cell),
                                                          Clone=pathway_by_cell_list[[1]]$Clone))
 logcounts(pathway_sce) <- log1p(counts(pathway_sce))
+
+# Run UMAP on cells based on their pathways values.
 pathway_sce_umap <- runUMAP(pathway_sce, name="UMAP")
 W <- reducedDim(pathway_sce_umap, "UMAP")
 df <- data.frame(Dim1=W[,1], Dim2=W[,2], Clone=colData(pathway_sce)$Clone)
@@ -462,7 +465,6 @@ p <- ggplot(df, aes(Dim1, Dim2, col = Clone)) + geom_point() + theme_classic()
 p <- p + scale_color_brewer(type = "qual", palette = "Set1")
 p <- p + theme(axis.title.x=element_text(size = base_size * 2), axis.title.y=element_text(size = base_size * 2), legend.text = element_text(size=base_size))
 p # Nothing interesting.
-
 
 # Plot of U-Map dimension but using color coding by hallmarks.
 # For each cell, for each pathway, accumulate the gene expression
@@ -510,7 +512,7 @@ head(df.nano)
 dim(df.nano)
 
 # Do it again, use original datum2node
-datum2node_ <- read.table(paste(PHYLEX_OUT_PATH, "datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
+datum2node_ <- read.table(paste(PHYLEX_OUT_PATH, "chain", best_chain, "/joint/tree0/datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
 names(datum2node_) <- c("ID", "Node")
 table(datum2node_$Node)
 df.nano_ <- left_join(df.nano_pre, datum2node_, by = "ID")
@@ -523,7 +525,7 @@ df.nano$MUT <- 1
 
 df.nano.melted <- dcast(df.nano, formula = "GENE ~ Clone", value.var = "MUT")
 
-# Can't think of any smarter way to do this... come back and make it better later.
+# Can't think of any smarter way to do this... 
 for (i in 3:dim(df.nano.melted)[2]) {
   df.nano.melted[1:(which(df.nano.melted[,i] == 1)[1] - 1),i] <- 1
 }
@@ -548,14 +550,14 @@ p
 ggsave(filename = paste(dest_dir, "/Mutation_by_Clone.pdf", sep=""), p, width = 5.5, height = 11, units = "in")
 
 #### Plot inferred cellular prevalences for each region using a barplot. ###
-cell_prev <- read.table(paste(PHYLEX_OUT_PATH, "/cellular_prev.tsv", sep=""), header=F, sep="\t", as.is = T)
+cell_prev <- read.table(paste(PHYLEX_OUT_PATH, "chain", best_chain, "/joint/tree0/cellular_prev.tsv", sep=""), header=F, sep="\t", as.is = T)
 cell_prevs <- matrix(as.numeric(unlist(lapply(cell_prev[,2], function(row) {
   strsplit(row, split = ",")[[1]]
 }))), ncol = 5, byrow = T)
 cell_prevs.df <- data.frame(ID = cell_prev[,1], CellularPrevalence = cell_prevs)
 names(cell_prevs.df) <- c("ID", REGIONS)
 
-unmodified_datum2node <- read.table(paste(PHYLEX_OUT_PATH, "/datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
+unmodified_datum2node <- read.table(paste(PHYLEX_OUT_PATH, "chain", best_chain, "/joint/tree0/datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
 names(unmodified_datum2node) <- c("ID", "Node")
 
 lineage_datum2node <- subset(unmodified_datum2node, Node %in% datum2node$Node)
@@ -611,7 +613,7 @@ p <- p + scale_y_continuous(expand = c(0,0), limits = c(0, 0.6), breaks = seq(0,
 p
 ggsave(p, filename = paste(dest_dir, "CellFrac.pdf", sep="/"))
 
-# Plot with Region on the x-axis and use color for the clones.
+# Plot with Region on the x-axis and use better colors (colorbline palette) for the clones.
 clone_colors <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#CC79A7", "#0072B2", "#D55E00")
 
 p <- ggplot(cell_prev.clone.melted, aes(x = Region, y = CellFrac, fill=as.factor(Clone))) + geom_bar(stat="identity", position="dodge")

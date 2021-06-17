@@ -1,4 +1,5 @@
-data/cna/
+data/HER2_POS*
+data/HGSOC*
 
 # History files
 .Rhistory

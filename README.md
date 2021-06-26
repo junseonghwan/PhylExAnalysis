@@ -36,7 +36,7 @@ The `ID` column corresponds to the `ID` column in the bulk data file. The `Cell`
 
 Finally, there is a file containing the hyperparameters to be used in the inference. We recommend to auto-generate this file using the scripts provided (see the subsequent sections for details).
 
-Example data files accepted by PhylEx are provided in `data/`. See for example, `data/HGSOC_bulk.txt`, `data/HGSOC_sc.txt`, and `data/HGSOC_sc_hp.txt`.
+The data files accepted by PhylEx are provided in [Zenodo](https://zenodo.org/record/4950446#.YNaC9BNKj6A). Download HER2_POS_SS3.tar.gz to `data/`, extract it and see `bulk.txt`, `sc.txt`, and `sc_hp.txt`.
 
 ## Real biological data processing
 
@@ -82,15 +82,18 @@ In general, start with a smaller number of iterations and monitor the log likeli
 
 
 ## Reproducibility
-The figures and tables presented in [PhylEx paper](https://www.biorxiv.org/content/10.1101/2021.02.16.431009v1) can be reproduced from the results deposited to [Zenodo](https://zenodo.org/record/4950446#.YMtuyZNKg8Y). We have added resource files needed in the analysis to `data/` directory.
+The figures and tables presented in [PhylEx paper](https://www.biorxiv.org/content/10.1101/2021.02.16.431009v1) can be reproduced from the results deposited to [Zenodo](https://zenodo.org/record/4950446). We have added resource files needed in the analysis to `data/` directory.
 
-1. Download the results files for HGSOC and HER2+: `HGSOC_SS#.tar.gz`, `HER2_POS_SS3.tar.gz`. Uncompress the files under `data/`.
+1. Download the results files for HGSOC and HER2+: `HGSOC_SS3.tar.gz`, `HER2_POS_SS3.tar.gz`. Uncompress the files under `data/`.
 2. Run `Rscripts/HER2_DGE.R` to reproduce figures for HER2+ breast cancer.
     - For HER2+ analysis, we downloaded [PanCancer pathway genes](https://www.nanostring.com/products/ncounter-assays-panels/panel-selection-tool/) to be downloaded from NanoString (Seattle, WA) -- made available as `data/LBL-10025_nCounter_PanCancer_Human_Pathways_Panel_Gene_List.xlsx`.
     - It also requires exons, we have a pre-processed the file as `data/exons.bed`.
     - Finally, we use MSigDB's Hallmark geneset available as `data/human_H_v5p2.rdata`.
 3. The phylo-phenotypic analysis for ovarian cancer cell-line data can be reproduced by running `Rscripts/HGSOC_SS3_DGE.R` and `Rscripts/HGSOC_SS3_coclustering_plot.R`. 
     - For pathway analysis, we use MSigDB's ontology geneset available as `data/human_c5_v5p2.rdata`.
+4. Different simulation cases and theirs results are also deposited to Zenodo. For example, `binary_cn.tar.gz` contains the data files and the result files for binary clonal tree and bulk data simulated with birth-death process acting on the copy numbers. The result files also include outputs from running other softwares. 
+
+For full reproducibility, copy number and variant call results from the bulk data are also deposited to [Zenodo](https://zenodo.org/record/4950446). For example, `HER2_POS.tar.gz` and `HGSOC.tar.gz` files include copy number and variant calls from the bulk data. 
 
 ## Simulation data generation
 The code for simulating the data is provided in the script: `scripts/SimulateData.py`.

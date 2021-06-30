@@ -25,6 +25,8 @@ cmake ..
 make install
 ```
 
+Installation should only take a few minutes.
+
 ## PhylEx input data
 
 The bulk data has 5 columns separated by tabs: `ID`, `b`, `d`, `major_cn`, `minor_cn`.
@@ -76,6 +78,8 @@ Relevant scripts:
 Once the input data are generated, we recommend to use a script to `scripts/RunInference.py`, which generates the configuration file and runs PhylEx.
 We recommend to use 4 chains and the number of MCMC iterations should depend on the number of SNVs. 
 As a point of reference, we used 20,000 iterations for HER2+ data, which had 432 SNVs and 369 cells and 10,000 iterations for HGSOC data, which had 67 SNVs and 360 cells.
+The run time for HGSOC should take about 10-30 minutes depending on the hardware using a single core. 
+The run time is mostly affected by the number of SNVs under consideration; hence, the run time for HER2+ can take about 12 hours up to 24 hours.
 In general, start with a smaller number of iterations and monitor the log likelihood.
 
 **We plan to add a feature to start a run from a previous run to facilitate this process.**

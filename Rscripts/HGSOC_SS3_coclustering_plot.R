@@ -57,7 +57,7 @@ table(datum2node$Node)
 datum2node_ <- left_join(datum2node, gt)
 datum2node_ <- datum2node_[,c("ID", "Node", "CloneName")]
 datum2node_ <- datum2node_[validation_idx,]
-tree <- temp[order(nchar(datum2node_$Node), datum2node_$Node),]
+tree <- datum2node_[order(nchar(datum2node_$Node), datum2node_$Node),]
 table(tree$CloneName)
 table(tree$Node)
 datum2node_$Node <- as.character(datum2node_$Node)
@@ -89,6 +89,7 @@ sc_join <- subset(sc_join, ID %in% datum2node.sorted$ID)
 sc_join$Cell <- factor(sc_join$Cell, levels = cell_order)
 sc_join$ID <- factor(sc_join$ID, levels = datum2node.sorted$ID)
 
+base_size <- 11
 p <- ggplot(subset(sc_join, b >0), aes(ID, Cell, fill=Clone)) + geom_tile(colour = "white")
 p <- p + theme_bw()
 p <- p + xlab("Loci") + ylab("Cell")

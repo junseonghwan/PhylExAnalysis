@@ -23,6 +23,12 @@ parser.add_argument('-o', '--overwrite', help="Overwrite main.config if it exist
 #parser.add_argument('--geometric', help="Use geometric mean for single cell likelihood.", action="store_true")
 parser.add_argument('--local', help="Run it locally.", action="store_true")
 parser.add_argument('--bulk_only', help="Run it without single cells.", action="store_true")
+parser.add_argument('--alpha0_max', help="TSSB prior max for alpha0 parameter.", type = float, default = 1)
+parser.add_argument('--lambda_max', help="TSSB prior max for lambda parameter.", type = float, default = 0.2)
+parser.add_argument('--gamma_max', help="TSSB prior max for gamma parameter.", type = float, default = 0.5)
+parser.add_argument('--alpha0_min', help="TSSB prior min for alpha0 parameter.", type = float, default = 0)
+parser.add_argument('--lambda_min', help="TSSB prior min for lambda parameter.", type = float, default = 0)
+parser.add_argument('--gamma_min', help="TSSB prior min for gamma parameter.", type = float, default = 0)
 args = parser.parse_args()
 
 PATH_TO_EXECUTABLE  =  "RunInference.sh"
@@ -34,12 +40,12 @@ THINNING = args.thinning
 BURN_IN = args.burn_in
 
 # Default values.
-ALPHA0_MAX = 1
-LAMBDA_MAX = 0.2
-GAMMA_MAX = 0.5
-ALPHA0_MIN = 0
-LAMBDA_MIN = 0
-GAMMA_MIN = 0
+ALPHA0_MAX = args.alpha0_max
+LAMBDA_MAX = args.lambda_max
+GAMMA_MAX = args.gamma_max
+ALPHA0_MIN = args.alpha0_min
+LAMBDA_MIN = args.lambda_min
+GAMMA_MIN = args.gamma_min
 SEQ_ERR = 0.001
 VAR_CP_PROB = 0.25
 SC_BURSTY_ALPHA0 = 0.01

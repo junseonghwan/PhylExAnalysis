@@ -8,8 +8,8 @@
 
 echo "$(date) Run begins."
 
-#module load R/3.6.3-nsc1-gcc-7.3.0
-#wait
+module load R/3.6.3-nsc1-gcc-7.3.0
+wait
 
 SEED=$1
 DATA_PATH=$2

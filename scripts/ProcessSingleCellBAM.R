@@ -22,7 +22,7 @@ sc_output_file <- args[3]
 #bam_file <- "~/PhylExAnalysis/_temp/BCSA2_P8Aligned.sortedByCoord.out.bam"
 #sc_output_file <- "~/PhylExAnalysis/_temp/BCSA2_P8.txt"
 
-chrs <- c(1:23, "X", "Y")
+chrs <- c(1:22, "X", "Y")
 nucleotides <- c("A","C","G","T")
 
 snv_loci <- read.table(loci_file, header=T, sep="\t")

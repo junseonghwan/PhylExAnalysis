@@ -1,5 +1,7 @@
 data/HER2_POS*
 data/HGSOC*
+data/simulation/
+data/SourceData/
 
 # History files
 .Rhistory
@@ -46,3 +48,4 @@ _*
 *.o
 *.so
 
+*.ipynb_checkpoints

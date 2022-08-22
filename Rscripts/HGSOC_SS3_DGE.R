@@ -23,13 +23,13 @@ library(tsne)
 library(xtable)
 library(zinbwave)
 
-DATA_PATH <- "~/PhylExAnalysis/data/HGSOC_SS3/"
-FEATURE_COUNTS_FILE <- "~/PhylExAnalysis/data/HGSOC_SS3/featureCounts.txt"
+DATA_PATH <- "data/HGSOC_SS3/"
+FEATURE_COUNTS_FILE <- "data/HGSOC_SS3/featureCounts.txt"
 BULK_PATH <- paste(DATA_PATH, "bulk.txt", sep="/")
 SC_PATH <- paste(DATA_PATH, "sc.txt", sep="/")
 SC_HP_PATH <- paste(DATA_PATH, "sc_hp.txt", sep="/")
 GT_PATH <- paste(DATA_PATH, "gt.txt", sep="/")
-ANALYSIS_OUTPUT_PATH <- "~/PhylExAnalysis/_figures/HGSOC/"
+ANALYSIS_OUTPUT_PATH <- "_figures/HGSOC/"
 
 topK <- 1000
 base_size <- 12
@@ -189,8 +189,12 @@ ReducedDimensionPlots <- function(df, plot_title, base_size = 12) {
 zinb <- zinbwave(sce, K = 2, epsilon=1000)
 W <- reducedDim(zinb)
 df <- data.frame(W1=W[,1], W2=W[,2], Node=colData(sce)$Node, Clone=colData(sce)$Clone)
+zinb_df <- df
 pl <- ReducedDimensionPlots(df, "ZINB-WaVE dimensions")
 ggsave(pl, filename = paste(ANALYSIS_OUTPUT_PATH, "ZINBWaVE_Top1000Genes.pdf", sep="/"), width=8, height=8, units = "in")
+
+# Save source data for Figure 3c, Supplementary Figure 3c, Supplementary Figure 4a-d.
+write.csv(df, file = "data/NatComm/Figure3c_SupplementaryFigure3c_SupplementaryFigure4a-d.csv", quote = F, row.names = F)
 
 # Remove the ancestral clone.
 df_ <- subset(df, !(Clone %in% c("Ancestral") ))
@@ -201,8 +205,12 @@ ggsave(pl_, filename = paste(ANALYSIS_OUTPUT_PATH, "ZINBWaVE_Top1000Genes_Withou
 set.seed(123455)
 tsne_data <- Rtsne::Rtsne(t(counts(sce)), pca = TRUE, perplexity=30, max_iter=5000)
 df <- data.frame(W1=tsne_data$Y[,1], W2=tsne_data$Y[,2], Clone=colData(sce)$Clone)
+tsne_df <- df
 pl <- ReducedDimensionPlots(df, "t-SNE dimensions")
 ggsave(pl, filename = paste(ANALYSIS_OUTPUT_PATH, "tSNE_Top1000Genes.pdf", sep="/"), width = 8, height = 8, units = "in")
+
+# Save source data for Figure 3d, Supplementary Figure 3d
+write.csv(df, file = "data/NatComm/SupplementaryFigure3d.csv", quote = F, row.names = F)
 
 # Remove the ancestral clone.
 df_ <- subset(df, !(Clone %in% c("Ancestral") ))
@@ -214,9 +222,11 @@ sce_zinb <- zinbwave(sce, K = 2, epsilon=1000, normalizedValues=TRUE, observatio
 weights <- assay(sce_zinb, "weights")
 W <- reducedDim(sce_zinb)
 df <- data.frame(W1=W[,1], W2=W[,2], Clone=colData(sce)$Clone)
+zinb_df2 <- df
 pl <- ReducedDimensionPlots(df, "ZINB-WaVE dimensions")
-# Not much of a difference.
+# Not much of a difference -- if any.
 pl
+
 
 # Do trajectory analysis using slingshot on zinbwave dimensions.
 sim <- slingshot(sce_zinb, clusterLabels = 'Clone', reducedDim = 'zinbwave', start.clus = "Ancestral", reassign = T)
@@ -331,6 +341,8 @@ p <- p + geom_segment(aes(x=x, y=y, xend=xend, yend=yend), data = segment, arrow
 p
 ggsave(p, filename = paste(ANALYSIS_OUTPUT_PATH, "ZINBWaVE_Top1000Genes_Trajectory_MClust.pdf", sep="/"), width = 8, height = 8, units = "in")
 
+# Save source data for Figure 3d.
+write.csv(df, file = "data/NatComm/Figure3d.csv", row.names = F, quote = F)
 
 # We are going to do DGE using edgeR.
 # We will use 3 groups rather than the clones.
@@ -427,7 +439,7 @@ dt <- decideTests(tfit)
 # Perform camera test on GO set.
 # Download gene ontology set.
 #download.file("http://bioinf.wehi.edu.au/software/MSigDB/human_c5_v5p2.rdata", "human_c5_v5p2.rdata", mode = "wb")
-load("~/PhylExAnalysis/data/human_c5_v5p2.rdata")
+load("data/human_c5_v5p2.rdata")
 indices <- ids2indices(Hs.c5, rownames(dge))
 test_ret <- camera(v, indices, contrast=contr.matrix[,1])
 cbind(head(rownames(test_ret), 20), head(test_ret$FDR, 20))
@@ -508,6 +520,9 @@ sum(volcano.df$annotate)
 pl <- MakeVolcanoPlot(volcano.df, "Ancestral vs EF")
 ggsave(pl, filename = paste(ANALYSIS_OUTPUT_PATH, "Laks_Ancestral_vs_EF_Volcano.pdf", sep="/"), width=8, height=8, units = "in")
 
+# Save source data for Figure 3e.
+write.csv(volcano.df, file = "data/NatComm/Figure3e.csv", row.names = F, quote = F)
+
 # ABCD vs EF GSEA table
 test_ret <- camera(v, indices, contrast=contr.matrix[,3])
 cbind(head(rownames(test_ret), 20), head(test_ret$FDR, 20))
@@ -555,6 +570,9 @@ volcano.df <- data.frame(gene_name=as.character(gene_names$external_gene_name), 
 
 pl <- MakeVolcanoPlot(volcano.df, "ABCD vs EF")
 ggsave(pl, filename = paste(ANALYSIS_OUTPUT_PATH, "Laks_ABCD_vs_EF_Volcano.pdf", sep="/"), width=8, height=8, units = "in")
+
+# Source data for Figure 3f.
+write.csv(volcano.df, file = "data/NatComm/Figure3f.csv", row.names = F, quote = F)
 
 # Ancestral vs ABCD
 lrt <- glmWeightedF(fit, contrast = c(-1, 1, 0))

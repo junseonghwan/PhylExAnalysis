@@ -4,8 +4,8 @@ SEED <- as.numeric(args[1])
 DATA_PATH <- args[2]
 OUTPUT_PATH <- args[3]
 #SEED <- 1
-#DATA_PATH <- "~/Dropbox/seong/PhylExNatComm/zenodo/binary_cn/"
-#OUTPUT_PATH <- "~/PhylExAnalysis/_output/simul/binary_cn/"
+#DATA_PATH <- "data/simulation/binary/"
+#OUTPUT_PATH <- "_output/simul/binary/"
 set.seed(SEED)
 if (!dir.exists(OUTPUT_PATH)) {
   dir.create(OUTPUT_PATH, recursive = TRUE)

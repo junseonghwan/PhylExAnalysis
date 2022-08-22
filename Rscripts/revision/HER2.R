@@ -7,42 +7,40 @@ library(ggplot2)
 library(PhylExR)
 library(Seurat)
 
-setwd("~/PhylExAnalysis/")
+#setwd("~/PhylExAnalysis/")
 
 # TSSB results:
 reps <- 0:3
 rep_count <- length(reps)
 DATA_PATH <- "data/HER2_POS_SS3/"
+
+sc <- read.table("data/HER2_POS_SS3/sc.txt", header = T)
+sc_hp <- read.table("data/HER2_POS_SS3/sc_hp.txt", header = T)
+bursty_hp <- list(alpha=0.01, beta=0.01)
+
 rep_no <- FindBestRep(paste(DATA_PATH, "tssb", sep="/"), chains = 0:3)
 rep_path <- paste(DATA_PATH, "/tssb/chain", rep_no, sep="")
+datum2node_tssb <- read.table(paste(rep_path, "joint/tree0/datum2node.tsv", sep="/"), header=F, sep="\t", as.is = T)
+names(datum2node_tssb) <- c("ID", "Node")
+table(datum2node_tssb$Node)
 
 #sc <- read.table(paste(DATA_PATH, "sc.txt", sep="/"), header=T, sep="\t")
 datum2node_tssb <- read.table(paste(rep_path, "joint/tree0/datum2node.tsv", sep="/"), header=F, sep="\t", as.is = T)
 names(datum2node_tssb) <- c("ID", "Node")
 table(datum2node_tssb$Node)
 
-# PhylEx results:
-sc <- read.table("data/HER2_POS_SS3/sc.txt", header = T)
-sc_hp <- read.table("data/HER2_POS_SS3/sc_hp.txt", header = T)
-best_chain <- FindBestRep("data/HER2_POS_SS3/phylex/", chains = 0:3)
-datum2node <- read.table(paste("data/HER2_POS_SS3/phylex/chain", best_chain, "/joint/tree0/datum2node.tsv", sep=""), header = F)
-names(datum2node) <- c("ID", "Node")
-bursty_hp <- list(alpha=0.01, beta=0.01)
-cells.df <- AssignCellsBursty(sc, datum2node, bursty_hp = bursty_hp, biallelic_hp = sc_hp, include_normal_clone = F)
-cells.df_w_normal <- AssignCellsBursty(sc, datum2node, bursty_hp = bursty_hp, biallelic_hp = sc_hp, include_normal_clone = T)
-cells.df_tssb <- AssignCellsBursty(sc, datum2node_tssb, bursty_hp = bursty_hp, biallelic_hp = sc_hp, include_normal_clone = F)
-table(datum2node$Node)
-table(cells.df$Node)
-table(cells.df_w_normal$Node)
-table(cells.df_tssb$Node)
+cell.df_tssb <- AssignCellsBursty(sc, datum2node_tssb, bursty_hp = bursty_hp, biallelic_hp = sc_hp, include_normal_clone = F)
+table(cell.df_tssb$Node)
+
+# Output source data for Supplementary Figure 6a.
+write.csv(datum2node_tssb, file = "data/NatComm/SupplementaryFigure6aSNVs.csv", quote = F, row.names = F)
+write.csv(cell.df_tssb, file = "data/NatComm/SupplementaryFigure6aCells.csv", quote = F, row.names = F)
 
 # Let's take a deeper look at clone 0_0_0_0_0_1 from TSSB.
 branched_node <- "0_0_0_0_0_1"
 branched_clone <- datum2node_tssb[datum2node_tssb$Node == branched_node,]
-# Where are they in datum2node?
-subset(datum2node, ID %in% branched_clone$ID)
 # Let's check single cell data.
-branched_cells <- subset(cells.df_tssb, Node %in% branched_node)
+branched_cells <- subset(cell.df_tssb, Node %in% branched_node)
 temp_sc <- subset(sc, ID %in% branched_clone$ID & Cell %in% branched_cells$Cell)
 ret <- temp_sc %>% group_by(Cell) %>% summarise(n = sum(d - a > 0))
 # All the cells have at least one of these mutations.
@@ -63,19 +61,24 @@ sum(subset(datum2node_tssb, ID %in% muts$ID)$Node == sibling_node)
 # Generate a heatmap figure focusing on the mutations found in branched_node and sibling_node.
 ids <- datum2node_tssb[datum2node_tssb$Node %in% c(branched_node, sibling_node),]
 sc_ <- subset(sc, ID %in% ids$ID)
-sc_ <- left_join(sc_, cells.df_tssb)
+sc_ <- left_join(sc_, cell.df_tssb)
 sc_ <- subset(sc_, Node %in% c(branched_node, sibling_node))
 sc_$b <- sc_$d - sc_$a
 sc_ <- subset(sc_, b > 0)
 ids <- unique(sc_$ID)
-cells_clustered <- cells.df_tssb[order(cells.df_tssb$Node), "Cell"]
+cells_clustered <- cell.df_tssb[order(cell.df_tssb$Node), "Cell"]
 cells_clustered <- cells_clustered[cells_clustered %in% unique(sc_$Cell)]
 sc_$Cell <- factor(sc_$Cell, levels = cells_clustered)
 mut_ids_clustered <- datum2node_tssb[order(datum2node_tssb$Node), "ID"]
 mut_ids_clustered <- mut_ids_clustered[mut_ids_clustered %in% ids]
 sc_$ID <- factor(sc_$ID, levels = mut_ids_clustered)
 base_size <- 11
-p <- ggplot(subset(sc_, b > 0), aes(ID, Cell, fill = b)) + geom_tile(color = "white")
+
+sc_$Clone <- sc_$Node
+sc_[sc_$Node %in% sibling_node,"Clone"] <- "Clone5"
+sc_[sc_$Node %in% branched_clone$Node,"Clone"] <- "Clone6"
+sc_b <- subset(sc_, b > 0)
+p <- ggplot(sc_b, aes(ID, Cell, fill = Clone)) + geom_tile(color = "white")
 p <- p + theme_bw()
 p <- p + xlab("Loci") + ylab("Cell")
 p <- p + scale_x_discrete(expand = c(0, 0)) + scale_y_discrete(expand = c(0, 0))
@@ -84,14 +87,79 @@ p <- p + theme(axis.title.x = element_text(size = base_size * 2))
 p <- p + theme(axis.title.y = element_text(size = base_size * 2))
 p <- p + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5), axis.text.y = element_blank())
 p <- p + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-p <- p + theme(legend.text = element_text(size = 7, face = "bold"))
-p <- p + guides(fill = guide_legend(title = "Variant reads", size = 7))
+p <- p + theme(legend.text = element_text(size = base_size * 1.5, face = "bold"))
+p <- p + guides(fill = guide_legend(title = "TSSB (SNV) Clone", size = base_size))
 p <- p + annotate("rect", xmin = which(mut_ids_clustered == "s343") - 0.5, xmax = which(mut_ids_clustered == "s352") + 0.5, ymin = 0, ymax = length(cells_clustered) + 0.5, fill = "red", alpha = 0.2)
 #p <- p + annotate("rect", xmin = which(mut_ids_clustered == "s15") - 0.5, xmax = which(mut_ids_clustered == "s343") - 0.5, ymin = 0, ymax = length(cells_clustered) + 0.5, fill = "gray", alpha = 0.2)
-ggsave(p, filename = "~/phylo-express-paper/figures/revision/HER2_pos/TSSB_branching_sc_plot.pdf", width = 6, height = 11, units = "in")
+p
+ggsave(p, filename = "~/phylo-express-paper/figures/HER2_pos/TSSB_branching_sc_plot.pdf", width = 6, height = 11, units = "in")
 ggsave(p, filename = "_figures/HER2_POS/TSSB_branching_sc_plot.pdf", width = 6, height = 11, units = "in")
 
-# Load SS3 data.
+# Output source data for Supplementary Figure 6d.
+write.csv(sc_b, file = "data/NatComm/SupplementaryFigure6d.csv", row.names = F, quote = F)
+
+
+# PhylEx
+#rep_no <- FindBestRep(paste(DATA_PATH, "phylex", sep="/"), chains = 0:3)
+#rep_path <- paste(DATA_PATH, "/phylex/chain", rep_no, sep="")
+
+best_chain <- FindBestRep("data/HER2_POS_SS3/phylex/", chains = 0:3)
+datum2node <- read.table(paste("data/HER2_POS_SS3/phylex/chain", best_chain, "/joint/tree0/datum2node.tsv", sep=""), header = F)
+names(datum2node) <- c("ID", "Node")
+table(datum2node$Node)
+
+datum2node <- CollapseClones(datum2node, MIN_SNV_COUNT = 1)
+table(datum2node$Node)
+table(cell.df$Node)
+cell.df <- AssignCellsBursty(sc, datum2node, bursty_hp = bursty_hp, biallelic_hp = sc_hp, include_normal_clone = F)
+table(cell.df$Node)
+
+ret <- CollapseClonesByCellCount(datum2node, cell.df)
+datum2node <- ret$datum2node
+cell.df <- ret$cell.df
+
+datum2node$Node <- as.character(datum2node$Node)
+datum2node.sorted <- datum2node[order(datum2node$Node),]
+datum2node$Clone <- datum2node$Node
+
+# Re-label the clone names.
+nodes <- unique(datum2node$Node)
+nodes_ordered <- nodes[order(nchar(nodes), nodes)]
+clone_count <- length(nodes_ordered)
+for (i in 1:clone_count) {
+  idx <- datum2node$Node == nodes_ordered[i]
+  datum2node$Clone[idx] <- i
+  idx <- cell.df$Node == nodes_ordered[i]
+  cell.df$Clone[idx] <- paste("Clone", i, sep="")
+}
+
+cell_order <- cell.df[order(cell.df$Node), "Cell"]
+sc_join <- left_join(sc, cell.df, by = "Cell")
+sc_join <- subset(sc_join, ID %in% datum2node.sorted$ID)
+sc_join$Cell <- factor(sc_join$Cell, levels = cell_order)
+sc_join$ID <- factor(sc_join$ID, levels = datum2node.sorted$ID)
+sc_join$b <- sc_join$d - sc_join$a
+
+base_size <- 11
+sc_join_b.df <- subset(sc_join, b >0)
+p <- ggplot(sc_join_b.df, aes(ID, Cell, fill=Clone)) + geom_tile(colour = "white")
+p <- p + theme_bw()
+p <- p + xlab("Loci") + ylab("Cell")
+p <- p + scale_x_discrete(expand = c(0, 0)) + scale_y_discrete(expand = c(0, 0))
+p <- p + theme(axis.ticks = element_blank())
+p <- p + theme(axis.title.x =element_text(size = base_size * 2))
+p <- p + theme(axis.title.y =element_text(size = base_size * 2))
+p <- p + theme(axis.text.x = element_blank(), axis.text.y = element_blank())
+p <- p + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+p <- p + theme(legend.text = element_text(size=base_size)) + guides(fill=guide_legend(title="PhylEx (SNV) Clone", size = base_size))
+p
+ggsave(p, filename = "_figures/HER2_POS/Coclustering.pdf", width = 6, height = 11.5, units = "in")
+
+# Output source data for Supplementary Figure 6e.
+write.csv(sc_join_b.df, file = "data/NatComm/SupplementaryFigure6e.csv", quote = F, row.names = F)
+
+
+# InferCNV
 fc <- read.table("data/HER2_POS_SS3/featureCounts.txt", header = T)
 MIN_CELLS <- 5
 seurat <- CreateSeuratObject(fc, min.cells = MIN_CELLS)
@@ -126,90 +194,82 @@ ret_$chromosome_name <- paste("chr", ret_$chromosome_name, sep="")
 write.table(ret_[,c(1, 3, 4, 5)], file = GENE_ORDER_FILE, sep="\t", quote = F, row.names = F, col.names = F)
 write.table(data.frame(Cell=colnames(exp.rawdata), Annotation="Cancer"), file = ANNOTATION_FILE, quote = F, col.names = F, row.names = F, sep="\t")
 
-# Run InferCNV.
+seed <- 1
+set.seed(seed)
+infercnv_outpath <- paste("data/HER2_POS_SS3/infercnv/hmm_i6_subclusters/seed", seed, sep="")
 infercnv_obj <- CreateInfercnvObject(raw_counts_matrix=exp.rawdata,
                                      ref_group_names=NULL,
                                      annotations_file = ANNOTATION_FILE,
-                                     gene_order_file=GENE_ORDER_FILE) 
+                                     gene_order_file=GENE_ORDER_FILE)
 
 infercnv_obj_hmm_i6 <- infercnv::run(infercnv_obj,
                                      cutoff=1, 
-                                     out_dir="data/HER2_POS_SS3/infercnv/", 
-                                     cluster_by_groups=TRUE, 
+                                     out_dir=infercnv_outpath, 
+                                     cluster_by_groups=FALSE, 
                                      denoise=TRUE,
                                      HMM=TRUE,
-                                     HMM_type = "i6",)
-saveRDS(infercnv_obj_hmm_i6, file = "data/HER2_POS_SS3/infercnv/infercnv_obj_hmm_i6.RDS")
+                                     HMM_type = "i6",
+                                     analysis_mode = "subclusters")
 
-plot(infercnv_obj_hmm_i6@tumor_subclusters$hc$Cancer, labels = FALSE)
-infercnv_clones <- cutree(infercnv_obj_hmm_i6@tumor_subclusters$hc$Cancer, 5)
+infercnv_cnv_pred_genes <- read.table(paste(infercnv_outpath, "/HMM_CNV_predictions.HMMi6.rand_trees.hmm_mode-subclusters.Pnorm_0.5.pred_cnv_genes.dat", sep=""), header = T)
+infercnv_cnv_pred_regions <- read.table(paste(infercnv_outpath, "/HMM_CNV_predictions.HMMi6.rand_trees.hmm_mode-subclusters.Pnorm_0.5.pred_cnv_regions.dat", sep=""), header = T)
+infercnv_cell_groupings <- read.table(paste(infercnv_outpath, "/17_HMM_predHMMi6.rand_trees.hmm_mode-subclusters.cell_groupings", sep=""), header = T)
 
-# Run CopyKAT and analyze the results.
+# Source data for figure 6c.
+tbl <- table(infercnv_cell_groupings$cell_group_name)
+write.table(as.data.frame(tbl), file = "data/NatComm/SupplementaryFigure6c.csv", row.names = F, quote = F)
+
+# Generate UMAP.
+library(Seurat)
 dim(exp.rawdata)
-copykat.test <- copykat(rawmat=exp.rawdata, id.type="E", ngene.chr=5, win.size=25, KS.cut=0.1, sam.name="test", distance="euclidean", norm.cell.names="", n.cores=4, cell.line = F)
-pred.test <- data.frame(copykat.test$prediction)
-CNA.test <- data.frame(copykat.test$CNAmat)
-saveRDS(copykat.test, file = "data/HER2_POS_SS3/copykat//copykat_object.RDS")
-
-plot(copykat.test$hclustering, label = FALSE)
-copykat_clones <- cutree(copykat.test$hclustering, k = 5)
-
-# Let's check concordances between the two methods.
-infercnv_clones_ <- infercnv_clones[names(infercnv_clones) %in% names(copykat_clones)]
-length(infercnv_clones_) == length(copykat_clones)
-mean(names(infercnv_clones_) == names(copykat_clones))
-# Low concordance between the two as measured by adjusted Rand Index.
-mclust::adjustedRandIndex(copykat_clones, infercnv_clones_)
-
-# Compare to SNV clones.
-sc_ <- left_join(sc, cells.df)
-names(sc_)
-snv_clones <- unique(sc_[,c("Node", "SampleName")])
-snv_clones$SampleName <- paste(snv_clones$SampleName, "Aligned", sep="")
-snv_clones <- snv_clones[snv_clones$SampleName %in% names(infercnv_clones_),]
-snv_clones <- snv_clones[match(names(copykat_clones), snv_clones$SampleName),]
-mclust::adjustedRandIndex(copykat_clones, snv_clones$Node)
-mclust::adjustedRandIndex(infercnv_clones_, snv_clones$Node)
-
-seurat <- seurat %>% NormalizeData() %>% ScaleData
+seurat <- CreateSeuratObject(counts = exp.rawdata)
+seurat <- NormalizeData(seurat)
 seurat <- FindVariableFeatures(seurat)
+seurat <- ScaleData(seurat)
 seurat <- RunPCA(seurat)
-seurat <- FindNeighbors(seurat, dims = 1:30)
-seurat <- FindClusters(seurat, resolution = 0.8)
 seurat <- RunUMAP(seurat, dims = 1:30)
-DimPlot(seurat, label = TRUE)
-cell_names_to_analyze <- unique(paste(sc$SampleName, "Aligned", sep=""))
-seurat$cell_names <- colnames(seurat)
-seurat_ <- subset(seurat, subset = cell_names %in% cell_names_to_analyze)
-ordering <- match(seurat_$cell_names, cell_names_to_analyze)
-seurat_$cell_names == cell_names_to_analyze[ordering]
-Idents(seurat_) <- cells.df$Node[ordering]
+DimPlot(seurat)
+
+mean(cell.df$SampleName == colnames(seurat))
+seurat_ <- seurat[,colnames(seurat) %in% paste(unique(sc_join$SampleName), "Aligned", sep="")]
+Idents(seurat_) <- cell.df$Node
 DimPlot(seurat_)
 
-# Compute coverage for the genes used in Figure 4b.
-genes <- convert_to_ensembl_id(gene_names = c("CDC6", "FN1", "WNT10A", "PITX2", "EZH2", "PRKACG", 
-                                     "CACNG4", "NF1", "POLE2", "DKK2", "ETS2", "FGF14", 
-                                     "ACVR1B", "PRKDC", "COL4A5", "VPS33B", "IL2RA", "MDC1", 
-                                     "CACNA2D2", "PIK3R3", "TP53", "FOS", "DDX50", "MAP3K8"), mart)
+seurat_infercnv <- seurat[,colnames(seurat) %in% infercnv_cell_groupings$cell]
+midx <- match(colnames(seurat_infercnv), infercnv_cell_groupings$cell)
+mean(infercnv_cell_groupings$cell[midx] == colnames(seurat_infercnv))
+Idents(seurat_infercnv) <- infercnv_cell_groupings$cell_group_name[midx]
+DimPlot(seurat_infercnv)
 
-genes <- genes[genes$chromosome_name %in% chrs,]
-fc_ <- fc[rownames(fc) %in% genes$ensembl_gene_id,]
-cell_count <- rowSums(fc_ > 0)
-mean_reads <- rowMeans(fc_)
-genes_ <- genes[match(rownames(fc_), genes$ensembl_gene_id),]
-genes_$cell_count <- 0
-genes_$mean_reads <- 0
-dat.df <- data.frame(cell_count = cell_count, mean_reads = mean_reads, genes = genes_$external_gene_name)
-dat.df_ <- dat.df[dat.df$cell_count > 0,]
+# Generate heatmap.
+# There should be clear separation in the SNVs.
+sc_join$SampleName <- paste(sc_join$SampleName, "Aligned", sep="")
 
-idx <- match(dat.df_$genes, genes_$external_gene_name)
-genes_[idx,]$cell_count <- temp$cell_count
-genes_[idx,]$mean_reads <- temp$mean_reads
+infercnv_cell_groupings_ <- infercnv_cell_groupings[infercnv_cell_groupings$cell %in% unique(sc_join$SampleName),]
+names(infercnv_cell_groupings_) <- c("CNVClone", "SampleName")
+table(infercnv_cell_groupings_$CNVClone)
+sc_join_ <- left_join(sc_join, infercnv_cell_groupings_)
+names(sc_join_)
 
-# Output as csv file.
-genes_ <- genes_[,-c(1, 3)]
-names(genes_) <- c("Gene", "Cell Count", "Mean Reads")
-xlsx::write.xlsx(genes_, file = "~/Dropbox/seong/PhylExNatComm/SupplementTable5.xlsx", row.names = F)
-xlsx::write.xlsx(genes_, file = "~/phylo-express-paper/tables/SupplementTable5.xlsx", row.names = F)
+sc_join_ <- sc_join_[order(sc_join_$CNVClone),]
+cell_order <- unique(sc_join_$Cell)
+sc_join_$Cell <- factor(sc_join_$Cell, levels = cell_order)
+sc_join_$CNVClone <- gsub(pattern = "all_observations.all_observations.", replacement = "", sc_join_$CNVClone)
+sc_join_$CNVClone <- gsub(pattern = "\\.", replacement = "_", sc_join_$CNVClone)
 
+sc_join_infercnv.df <- subset(sc_join_, b >0)
+p <- ggplot(sc_join_infercnv.df, aes(ID, Cell, fill=CNVClone)) + geom_tile(colour = "white")
+p <- p + theme_bw()
+p <- p + xlab("Loci") + ylab("Cell")
+p <- p + scale_x_discrete(expand = c(0, 0)) + scale_y_discrete(expand = c(0, 0))
+p <- p + theme(axis.ticks = element_blank())
+p <- p + theme(axis.title.x =element_text(size = base_size * 2))
+p <- p + theme(axis.title.y =element_text(size = base_size * 2))
+p <- p + theme(axis.text.x = element_blank(), axis.text.y = element_blank())
+p <- p + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+p <- p + theme(legend.text = element_text(size=base_size)) + guides(fill=guide_legend(title="CNV Clone", size = base_size))
+p
+ggsave(p, filename = "_figures/HER2_POS/Coclustering_InferCNV.pdf", width = 6, height = 11.5, units = "in")
 
+# Save source data for Supplementary Figure 6f.
+write.csv(sc_join_infercnv.df, file = "data/NatComm/SupplementaryFigure6f.csv", quote = F, row.names = F)

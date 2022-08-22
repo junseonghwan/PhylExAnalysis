@@ -14,9 +14,9 @@ library(scater)
 library(slingshot)
 library(zinbwave)
 
-DATA_PATH <- "~/PhylExAnalysis/data/HGSOC_SS3/"
-PHYLEX_OUTPUT_PATH <- "~/PhylExAnalysis/data/HGSOC_SS3/phylex/"
-ANALYSIS_OUTPUT_PATH <- "~/PhylExAnalysis/_figures/HGSOC/"
+DATA_PATH <- "data/HGSOC_SS3/"
+PHYLEX_OUTPUT_PATH <- "data/HGSOC_SS3/phylex/"
+ANALYSIS_OUTPUT_PATH <- "_figures/HGSOC/"
 FEATURE_COUNTS_PATH <- paste(DATA_PATH, "featureCounts.txt", sep="/")
 BULK_PATH <- paste(DATA_PATH, "bulk.txt", sep="/")
 SC_PATH <- paste(DATA_PATH, "sc.txt", sep="/")
@@ -53,6 +53,8 @@ best_chain_path <- paste(PHYLEX_OUTPUT_PATH, "/chain", best_chain, sep="")
 datum2node <- read.table(paste(best_chain_path, "/joint/tree0/datum2node.tsv", sep=""), header=F, sep="\t", as.is = T)
 names(datum2node) <- c("ID", "Node")
 table(datum2node$Node)
+# Output source data for Figure3b.
+write.table(datum2node, file = "data/NatComm/Figure3b.csv", sep=",", row.names = F, quote = F)
 
 datum2node_ <- left_join(datum2node, gt)
 datum2node_ <- datum2node_[,c("ID", "Node", "CloneName")]
@@ -90,7 +92,8 @@ sc_join$Cell <- factor(sc_join$Cell, levels = cell_order)
 sc_join$ID <- factor(sc_join$ID, levels = datum2node.sorted$ID)
 
 base_size <- 11
-p <- ggplot(subset(sc_join, b >0), aes(ID, Cell, fill=Clone)) + geom_tile(colour = "white")
+sc_join_ <- subset(sc_join, b >0)
+p <- ggplot(sc_join_, aes(ID, Cell, fill=Clone)) + geom_tile(colour = "white")
 p <- p + theme_bw()
 p <- p + xlab("Loci") + ylab("Cell")
 p <- p + scale_x_discrete(expand = c(0, 0)) + scale_y_discrete(expand = c(0, 0))
@@ -102,6 +105,8 @@ p <- p + theme(panel.grid.major = element_blank(), panel.grid.minor = element_bl
 p <- p + theme(legend.text = element_text(size=7, face="bold")) + guides(fill=guide_legend(title="Clone", size = 7))
 p
 ggsave(p, filename = paste(ANALYSIS_OUTPUT_PATH, "co-clustering.pdf", sep="/"), height = 8, width = 3.5, units = "in")
+
+write.table(sc_join_, file = "data/NatComm/SupplementaryFigure3b.csv", row.names = F, quote = F, sep=",")
 
 pl1 <- PlotTotalCounts(sc)
 ggsave(pl1, filename = paste(ANALYSIS_OUTPUT_PATH, "raw_expression.pdf", sep="/"), height = 8, width = 3.5, units = "in")

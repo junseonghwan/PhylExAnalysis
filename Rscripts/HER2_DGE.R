@@ -24,14 +24,14 @@ library(zinbwave)
 #source("R/CellAssign.R")
 #source("TNBC/Figure/Common.R")
 
-FEATURE_COUNTS_FILE <- "~/PhylExAnalysis/data/HER2_POS_SS3/featureCounts.txt"
-BULK_DATA_FILE <- "~/PhylExAnalysis/data/HER2_POS_SS3/bulk.txt"
-SC_DATA_FILE <- "~/PhylExAnalysis/data/HER2_POS_SS3/sc.txt"
-SC_HP_FILE <- "~/PhylExAnalysis/data/HER2_POS_SS3/sc_hp.txt"
+FEATURE_COUNTS_FILE <- "data/HER2_POS_SS3/featureCounts.txt"
+BULK_DATA_FILE <- "data/HER2_POS_SS3/bulk.txt"
+SC_DATA_FILE <- "data/HER2_POS_SS3/sc.txt"
+SC_HP_FILE <- "data/HER2_POS_SS3/sc_hp.txt"
 MIN_CELLS <- 2
 MIN_READS <- 5
 
-PHYLEX_OUT_PATH <- "~/PhylExAnalysis/data/HER2_POS_SS3/phylex/"
+PHYLEX_OUT_PATH <- "data/HER2_POS_SS3/phylex/"
 
 chains <- 0:3
 REP_COUNT <- length(chains)
@@ -86,6 +86,10 @@ table(datum2node$Node)
 # Cell assignment to nodes of the tree.
 table(cell.df$Node)
 
+# Output the raw data as source data for Supplementary Figure 4b.
+write.csv(cell.df, "data/NatComm/SupplementaryFigure4bCells.csv", row.names = F, quote = F)
+write.csv(datum2node, "data/NatComm/SupplementaryFigure4bSNVs.csv", row.names = F, quote = F)
+
 # 0_0_1 does not have any cell assigned to it. Let's see why.
 bulk_temp <- datum2node[datum2node$Node == "0_0_1",]
 sc_temp <- subset(sc, ID %in% bulk_temp$ID)
@@ -130,6 +134,13 @@ for (i in 1:clone_count) {
   cell.df$Clone[idx] <- i
 }
 
+table(datum2node$Clone)
+table(cell.df$Clone)
+
+# Output the data for Figure 4a.
+write.csv(cell.df, "data/NatComm/Figure4aCells.csv", row.names = F, quote = F)
+write.csv(datum2node, "data/NatComm/Figure4aSNVs.csv", row.names = F, quote = F)
+
 # Let's count the assignment of SNVs and cells to clones.
 table(datum2node$Clone)
 table(cell.df$Clone)
@@ -151,6 +162,7 @@ clone_depth <- lapply(cell.df$Node, function(x) {
 })
 cell.df$Depth <- unlist(clone_depth)
 
+######### Begin DGE.
 fc_ <- fc[,colnames(fc) %in% cell.df$SampleName]
 dim(fc_)
 
@@ -172,7 +184,7 @@ log1p(colSums(counts(sce)))
 
 # Let's select the genes in NanoString panel.
 library(xlsx)
-nano_string <- read.xlsx("~/PhylExAnalysis/data/LBL-10025_nCounter_PanCancer_Human_Pathways_Panel_Gene_List.xlsx",
+nano_string <- read.xlsx("data/LBL-10025_nCounter_PanCancer_Human_Pathways_Panel_Gene_List.xlsx",
                          sheetIndex = 2, header = T, startRow = 2, endRow = 774)
 
 bm <- getBM(attributes=c('ensembl_gene_id', 'hgnc_symbol', 'entrezgene_id', "chromosome_name", "external_gene_name"),
@@ -223,7 +235,7 @@ num_genes_to_label <- 10
 bm <- bm[!duplicated(paste(bm$ensembl_gene_id, bm$hgnc_symbol, sep="_")),]
 dim(bm)
 
-dest_dir <- "~/PhylExAnalysis/_figures/HER2_POS"
+dest_dir <- "_figures/HER2_POS"
 if (!dir.exists(dest_dir)) {
   dir.create(dest_dir, recursive = T)
 }
@@ -236,6 +248,7 @@ GetContrast <- function(idx, clone_count) {
 }
 
 ### Perform parent-child clone comparisons. ###
+dge_volcano.df <- data.frame()
 for (i in 1:(clone_count - 1)) {
   idx <- c(i, i+1)
   filename <- paste(clones[idx], collapse = "_vs_")
@@ -246,7 +259,18 @@ for (i in 1:(clone_count - 1)) {
   
   ggsave(plot = plots$volcano, filename = paste(dest_dir, paste(filename, "_volcano.pdf", sep=""), sep="/"), width = 8, height = 6, units = "in")
   ggsave(plot = plots$sig, filename = paste(dest_dir, paste(filename, "_sig_genes.pdf", sep=""), sep="/"), width = 8, height = 6, units = "in")
+  
+  # Save source data.
+  volcano.df <- data.frame(logfc = dge_results$table$logFC, 
+                           logpvalue = -log2(dge_results$table$PValue), significant = dge_results$table$FDR < 
+                             FDR_THRESHOLD, ensembl_gene_id = rownames(dge_results))
+  volcano.df <- left_join(volcano.df, bm, by = "ensembl_gene_id")
+  volcano.df$comparison <- title
+  dge_volcano.df <- rbind(dge_volcano.df, volcano.df)
 }
+dim(dge_volcano.df)
+# Save source data.
+write.csv(dge_volcano.df, file = "data/NatComm/Figure4f_SupplementaryFigure5a-f.csv", quote = F, row.names = F)
 
 ### Pathway analysis. Use all genes, i.e., use sce not sce_nano. ###
 rm(bm)
@@ -307,7 +331,7 @@ dt <- decideTests(tfit)
 #indices <- ids2indices(Hs.c5, rownames(dge))
 
 # Perform camera test on Hallmark set.
-load("~/PhylExAnalysis/data/human_H_v5p2.rdata")
+load("data/human_H_v5p2.rdata")
 indices <- ids2indices(Hs.H, rownames(dge))
 
 df <- data.frame()
@@ -356,6 +380,9 @@ p <- p + theme(axis.text.y = element_text(size = base_size * 1.5))
 p <- p + theme(legend.text=element_text(size=base_size * 1.5), legend.title = element_text(size=base_size * 1.5))
 p
 ggsave(paste(dest_dir, "Nano_Hallmark.pdf", sep="/"), p, height = 13.5, width=7.5, units = "in")
+
+# Save the source data for Figure 4c.
+write.csv(df, file = "data/NatComm/Figure4c.csv", quote = F, row.names = F)
 
 # Let's make boxplots on clones at pathway level.
 rm(bm)
@@ -425,6 +452,7 @@ pathway_by_clone <- data.frame()
 pathway_by_cell_list <- list()
 pathway_names <- c()
 pathway_by_cell <- matrix(0, nrow = dim(cell.df_)[1], ncol = length(Hs.H))
+pathway_averages.df <- data.frame()
 for (i in 1:length(Hs.H)) {
   pathway_entrez_ids <- Hs.H[[i]]
   pathway_name <- names(Hs.H)[i]
@@ -432,8 +460,11 @@ for (i in 1:length(Hs.H)) {
   ret <- PathwayAverageExpression(counts_, cell.df_, pathway_entrez_ids, avg=F)
 
   p <- PlotPathwayExprAverages(pathway_name, ret, log_scale = T)
-  ggsave(filename = paste("../_figures/HER2_pos/Nano_", pathway_name, "_boxplot.pdf", sep=""),
+  ggsave(filename = paste("_figures/HER2_pos/Nano_", pathway_name, "_boxplot.pdf", sep=""),
          p, height = 8, units = "in")
+  
+  ret$Pathway <- pathway_name
+  pathway_averages.df <- rbind(pathway_averages.df, ret)
 
   ret2 <- ret %>% group_by(Clone) %>% summarise(avg = mean(PathwayExpr), std = sd(PathwayExpr))
   pathway_by_clone <- rbind(pathway_by_clone, data.frame(Clone=ret2$Clone, MeanExpr=ret2$avg, Pathway=pathway_name))
@@ -445,6 +476,9 @@ for (i in 1:length(Hs.H)) {
                                           Pathway=pathway_name,
                                           PathwayExpr=ret$PathwayExpr)
 }
+
+# Save source data for Figure 4e.
+write.csv(pathway_averages.df, file = "data/NatComm/Figure4e.csv", row.names = F, quote = F)
 
 names(pathway_by_clone)
 unique(pathway_by_clone$Pathway)
@@ -476,11 +510,12 @@ df <- data.frame(Dim1=W[,1], Dim2=W[,2], Clone=colData(sce_umap_)$Clone)
 p <- ggplot(df, aes(Dim1, Dim2, colour=Clone)) + geom_point(size=base_size*0.2) + theme_classic()
 p
 
+########
 # Generate mutation plot.
 # For each clone, generate a plot of mutation status for genes in the NanoString list.
 # First, take intersection of SNVs used in the analysis with the genes in the NanoString list.
 # Plot the mutation status for each clone.
-exons <- read.table("~/PhylExAnalysis/data/exons.bed", header = F, as.is = T)
+exons <- read.table("data/exons.bed", header = F, as.is = T)
 names(exons) <- c("CHR", "START", "END", "GENE")
 exons.gr <- ConstructGranges(exons$CHR, start = exons$START, width = exons$END - exons$START)
 dat.gr <- ConstructGranges(loci$CHR, loci$POS, width = 0)
@@ -549,6 +584,9 @@ p <- p + theme(legend.title = element_blank(), legend.position = "top")
 p
 ggsave(filename = paste(dest_dir, "/Mutation_by_Clone.pdf", sep=""), p, width = 5.5, height = 11, units = "in")
 
+# Save source data for Figure 4b.
+write.csv(df.nano, file = "data/NatComm/Figure4b.csv", row.names = F, quote = F)
+
 #### Plot inferred cellular prevalences for each region using a barplot. ###
 cell_prev <- read.table(paste(PHYLEX_OUT_PATH, "chain", best_chain, "/joint/tree0/cellular_prev.tsv", sep=""), header=F, sep="\t", as.is = T)
 cell_prevs <- matrix(as.numeric(unlist(lapply(cell_prev[,2], function(row) {
@@ -616,7 +654,8 @@ ggsave(p, filename = paste(dest_dir, "CellFrac.pdf", sep="/"))
 # Plot with Region on the x-axis and use better colors (colorbline palette) for the clones.
 clone_colors <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#CC79A7", "#0072B2", "#D55E00")
 
-p <- ggplot(cell_prev.clone.melted, aes(x = Region, y = CellFrac, fill=as.factor(Clone))) + geom_bar(stat="identity", position="dodge")
+temp_plot.df <- cell_prev.clone.melted[,-c(1:2)]
+p <- ggplot(temp_plot.df, aes(x = Region, y = CellFrac, fill=as.factor(Clone))) + geom_bar(stat="identity", position="dodge")
 p <- p + theme_bw() + ylab("Clone fraction")
 p <- p + theme(axis.text.x = element_text(size = base_size*1.5), axis.text.y = element_text(size = base_size*1.5))
 p <- p + theme(axis.title.x = element_text(size=base_size * 2), axis.title.y=element_text(size = base_size * 2))
@@ -626,3 +665,39 @@ p <- p + scale_y_continuous(expand = c(0,0), limits = c(0, 0.6), breaks = seq(0,
 p <- p + labs(fill="Clone")
 p
 ggsave(p, filename = paste(dest_dir, "CellFrac.pdf", sep="/"))
+
+# Save source data for Figure 4d.
+write.csv(temp_plot.df, file = "data/NatComm/Figure4d.csv", quote = F, row.names = F)
+
+### Coverage stat (Supplementary Table 2)
+convert_to_ensembl_id <- function(gene_names, mart) {
+  results <- getBM(attributes = c("ensembl_gene_id", "external_gene_name", "chromosome_name"),
+                   filters = "external_gene_name", values = gene_names,
+                   mart = mart)
+  return(results)
+}
+genes <- convert_to_ensembl_id(gene_names = c("CDC6", "FN1", "WNT10A", "PITX2", "EZH2", "PRKACG", 
+                                              "CACNG4", "NF1", "POLE2", "DKK2", "ETS2", "FGF14", 
+                                              "ACVR1B", "PRKDC", "COL4A5", "VPS33B", "IL2RA", "MDC1", 
+                                              "CACNA2D2", "PIK3R3", "TP53", "FOS", "DDX50", "MAP3K8"), mart)
+
+genes <- genes[genes$chromosome_name %in% chrs,]
+fc_ <- fc[rownames(fc) %in% genes$ensembl_gene_id,]
+cell_count <- rowSums(fc_ > 0)
+mean_reads <- rowMeans(fc_)
+genes_ <- genes[match(rownames(fc_), genes$ensembl_gene_id),]
+mean(genes_$ensembl_gene_id == names(cell_count))
+dat.df <- data.frame(Gene = genes_$external_gene_name, CellCount = cell_count, MeanReads = mean_reads)
+#genes_$cell_count <- 0
+#genes_$mean_reads <- 0
+#dat.df_ <- dat.df[dat.df$cell_count > 0,]
+#idx <- match(dat.df$genes, genes_$Gene)
+#genes_$cell_count <- dat.df$cell_count
+#genes_$mean_reads <- dat.df$mean_reads
+
+# Output as csv file.
+#xlsx::write.xlsx(genes_, file = "~/Dropbox/seong/PhylExNatComm/SupplementTable5.xlsx", row.names = F)
+#xlsx::write.xlsx(genes_, file = "~/phylo-express-paper/tables/SupplementTable5.xlsx", row.names = F)
+write.csv(dat.df, file = "data/NatComm/SupplementaryTable2.csv", row.names = F, quote = F)
+
+

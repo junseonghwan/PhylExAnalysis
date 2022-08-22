@@ -1,0 +1,5 @@
+python RunInference.py 1 ../data/HGSOC_SS3/bulk.txt ../data/HGSOC_SS3/sc.txt ../data/HGSOC_SS3/sc_hp.txt ../data/HGSOC_SS3/phylex_5_1_02/ --alpha0_max 5 --lambda_max 0.2 --gamma_max 1 -n 20 --local
+
+python RunInference.py 1 ../data/HGSOC_SS3/bulk.txt ../data/HGSOC_SS3/sc.txt ../data/HGSOC_SS3/sc_hp.txt ../data/HGSOC_SS3/phylex_5_1_1/ --alpha0_max 5 --lambda_max 1 --gamma_max 1 -n 20 --local
+
+python RunInference.py 1 ../data/HGSOC_SS3/bulk.txt ../data/HGSOC_SS3/sc.txt ../data/HGSOC_SS3/sc_hp.txt ../data/HGSOC_SS3/ -n 20 --local

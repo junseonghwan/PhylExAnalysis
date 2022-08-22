@@ -17,4 +17,8 @@ pl2 <- pl2 + theme(legend.text = element_text(size = 16), axis.title = element_t
 pl2
 
 pl_combined <- ggarrange(pl, pl2, labels = c("a", "b"), common.legend = TRUE, legend = "bottom", font.label=list(color="black",size=16))
-ggsave(pl_combined, filename = "~/phylo-express-paper/figures/simul/two_step_comparison.pdf")
+ggsave(pl_combined, filename = "_figures/simulation/two_step_comparison.pdf")
+
+# Save the source data.
+write.csv(binary_loss, file = "data/NatComm/SupplementaryFigure2a.csv", quote = F, row.names = F)
+write.csv(binary_cn_loss, file = "data/NatComm/SupplementaryFigure2b.csv", quote = F, row.names = F)

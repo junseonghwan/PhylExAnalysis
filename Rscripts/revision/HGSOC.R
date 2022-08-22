@@ -19,19 +19,20 @@ library(Rcpp)
 library(PhylExR)
 library(SingleCellExperiment)
 library(scater)
+library(Seurat)
 library(slingshot)
 library(TSCAN)
 library(tsne)
 library(xtable)
 library(zinbwave)
 
-DATA_PATH <- "~/PhylExAnalysis/data/HGSOC_SS3/"
-FEATURE_COUNTS_FILE <- "~/PhylExAnalysis/data/HGSOC_SS3/featureCounts.txt"
+DATA_PATH <- "data/HGSOC_SS3/"
+FEATURE_COUNTS_FILE <- "data/HGSOC_SS3/featureCounts.txt"
 BULK_PATH <- paste(DATA_PATH, "bulk.txt", sep="/")
 SC_PATH <- paste(DATA_PATH, "sc.txt", sep="/")
 SC_HP_PATH <- paste(DATA_PATH, "sc_hp.txt", sep="/")
 GT_PATH <- paste(DATA_PATH, "gt.txt", sep="/")
-ANALYSIS_OUTPUT_PATH <- "~/PhylExAnalysis/_figures/HGSOC/"
+ANALYSIS_OUTPUT_PATH <- "_figures/HGSOC/"
 
 topK <- 1000
 base_size <- 12
@@ -314,9 +315,14 @@ D[D[,cell] != 0,cell]
 
 ape::write.tree(output.tree, "_figures/HGSOC/canopy.nwk")
 
+# Save source data for making Supplementary Figure 4e.
+write.csv(output.tree$Z, file = "data/NatComm/SupplementaryFigure4e.csv", quote = F, row.names = F)
+
 # Run cardelino:
+set.seed(2)
 library(cardelino)
-assignments <- clone_id(B, D, Config = output.tree$Z)
+#assignments <- clone_id(B, D, Config = output.tree$Z)
+assignments <- clone_id(B, D, Config = output.tree$Z, inference = "EM")
 names(assignments)
 prob_heatmap(assignments$prob)
 cluster_idx <- assign_cells_to_clones(assignments$prob)
@@ -410,6 +416,8 @@ p_annot <- p + annotate("rect", xmin = which(ids == "s33") - 0.5, xmax = which(i
 p_annot <- p_annot + annotate("rect", xmin = which(ids == "s3") - 0.5, xmax = which(ids == "s24") + 0.5, ymin = 0, ymax = cell_count + 0.5, fill = canopy_clone_colors[5], alpha = 0.4)
 ggsave("_figures/HGSOC/canopy_cardelino_sc_coclustering_annotated.pdf", p_annot, width = 6, height = 12, units = "in")
 
+write.csv(plot.df, file = "data/NatComm/SupplementaryFigure3a.csv", quote = F, row.names = F)
+
 cell_count <- length(unique(plot.df$Cell))
 p_annot <- p + annotate("rect", xmin = which(ids == "s8") - 0.5, xmax = which(ids == "s64") + 0.5, ymin = 0, ymax = cell_count + 0.5, fill = "white", alpha = 0.2)
 p_annot <- p_annot + annotate("rect", xmin = which(ids == "s4") - 0.5, xmax = which(ids == "s51") + 0.5, ymin = 0, ymax = cell_count + 0.5, fill = canopy_clone_colors[1], alpha = 0.2)
@@ -423,9 +431,9 @@ p_annot <- p_annot + annotate("rect", xmin = which(ids == "s10") - 0.5, xmax = w
 p_annot <- p_annot + annotate("rect", xmin = which(ids == "s42") - 0.5, xmax = which(ids == "s57") + 0.5, ymin = 0, ymax = cell_count + 0.5, fill = "green", alpha = 0.2)
 
 # Use Cardelino using PhylEx tree.
-output.tree$Z
-phylex_config <- matrix(0, ncol = length(table(datum2node$Node)), nrow = dim(datum2node)[1])
-phylex_config
+# output.tree$Z
+# phylex_config <- matrix(0, ncol = length(table(datum2node$Node)), nrow = dim(datum2node)[1])
+# phylex_config
 
 # Run InferCNV.
 ANNOTATION_FILE <- "data/HGSOC_SS3/annotation_denovo.txt"
@@ -460,7 +468,6 @@ head(infercnv_cnv_pred_genes)
 unique(infercnv_cnv_pred_regions$cell_group_name)
 
 # Show that the clustering does not work?
-library(Seurat)
 seurat <- CreateSeuratObject(counts = exp.rawdata)
 seurat <- NormalizeData(seurat)
 seurat <- FindVariableFeatures(seurat)

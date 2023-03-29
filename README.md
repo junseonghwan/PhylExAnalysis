@@ -1,5 +1,9 @@
 # PhylExAnalysis
 
+For questions, please email: seonghwan_jun@urmc.rochester.edu. 
+
+To report bugs using Github issue. Do not create a Github issue if it's not code related. Thank you!
+
 ## Install PhylExR
 
 We provide common functions used for data processing and analysis as an R package `PhylExR`. We recommend to install this package first.
@@ -179,5 +183,3 @@ These scripts were run locally/NSC Tetralith and will need work to get them runn
 
 For evaluation, we wrote Jupyter notebooks, the files can be found under `notebook/HGSOC` for evaluation concerning HGSOC cell-line and `notebook/simul` for evaluation concerning simulated data.
 
-## Contact
-For questions, please email: sjun2@fredhutch.org. Please report bugs using Github issue.
